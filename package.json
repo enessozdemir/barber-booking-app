@@ -2,8 +2,8 @@
   "name": "muhendis-berber",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
-    "build": "npm run build --prefix client && npm run build --prefix server",
+    "dev": "concurrently \"pnpm --filter client run dev\" \"pnpm --filter server run dev\"",
+    "build": "pnpm --filter client run build && pnpm --filter server run build",
     "lint": "eslint . --ext .ts,.tsx"
   },
   "devDependencies": {
