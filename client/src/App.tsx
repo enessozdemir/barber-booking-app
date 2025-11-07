@@ -1,23 +1,19 @@
-import { Provider } from 'react-redux';
-import { store } from './store';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import HomePage from './pages/HomePage';
-import ProtectedRoute from './features/auth/components/ProtectedRoute';
+import { Provider } from "react-redux";
+import { store } from "./modules/app/store";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import LoginPage from "./modules/auth/pages/LoginPage";
+import RegisterPage from "./modules/auth/pages/RegisterPage";
+import HomePage from "./modules/home/pages/HomePage";
+import ProtectedRoute from "./modules/auth/components/ProtectedRoute";
 
 function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <div className="text-white">
+        <div>
           <ToastContainer />
-          <nav className="p-4 flex gap-4 bg-gray-800">
-            <Link to="/login">Giriş</Link>
-            <Link to="/register">Kayıt</Link>
-          </nav>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />

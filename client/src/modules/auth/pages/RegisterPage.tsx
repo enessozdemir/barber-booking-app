@@ -1,0 +1,10 @@
+import Layout from "../components/Layout";
+import RegisterForm from "../components/RegisterForm";
+
+export default function RegisterPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Layout element={<RegisterForm />} />
+    </div>
+  );
+}

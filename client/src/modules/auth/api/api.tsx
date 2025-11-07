@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { store } from '../../../store';
+import { store } from '../../app/store';
 import { setAccessToken, logout as logoutAction } from '../store/authSlice';
 import type { AxiosRequestConfig } from 'axios';
-import type { RootState } from '../../../store';
+import type { RootState } from '../../app/store';
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
