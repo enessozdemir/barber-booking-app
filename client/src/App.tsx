@@ -13,7 +13,7 @@ function App() {
     <Provider store={store}>
       <BrowserRouter>
         <div>
-          <ToastContainer />
+          <ToastContainer autoClose={3000} pauseOnHover={false} theme="dark" />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />

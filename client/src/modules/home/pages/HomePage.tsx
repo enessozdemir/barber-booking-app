@@ -1,7 +1,6 @@
 import { useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
 import { useAuth } from "../../auth/hooks/useAuth";
-import { toast } from "react-toastify";
 
 export default function HomePage() {
   const auth = useSelector((s: RootState) => s.auth);
@@ -9,11 +8,10 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     await logout();
-    toast.info("Çıkış yapıldı");
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">s
+    <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-3xl text-white mb-4">
         Hoş geldiniz
         {auth.user ? `, ${auth.user.full_name || auth.user.phone}` : ""}!
