@@ -10,8 +10,9 @@ import AuthRedirectMessage from "./AuthRedirect";
 export default function RegisterForm() {
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const auth = useAuth();
   const navigate = useNavigate();
 
@@ -34,12 +35,13 @@ export default function RegisterForm() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await auth.register(phone, fullName, password, confirm);
-      toast.success("Kayıt başarılı — lütfen giriş yapın", { autoClose: 3000 });
+      await auth.register(phone, fullName, email, password, confirmPassword);
+      toast.success("Başarıyla Kayıt Olundu", { autoClose: 3000 });
       setPhone("");
       setFullName("");
+      setEmail("");
       setPassword("");
-      setConfirm("");
+      setConfirmPassword("");
       navigate("/login");
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Kayıt başarısız");
@@ -49,7 +51,7 @@ export default function RegisterForm() {
   return (
     <form onSubmit={submit}>
       <FormInput
-        label="Telefon Numarası"
+        label="Telefon No"
         value={phone}
         maxLength={10}
         setFunction={setPhone}
@@ -64,6 +66,14 @@ export default function RegisterForm() {
         placeholder="Ad Soyad"
       />
 
+      <FormInput
+        label="Email"
+        value={email}
+        maxLength={35}
+        setFunction={setEmail}
+        placeholder="user@xyz.com"
+      />
+
       <PasswordInput
         label="Şifre"
         placeholder="6 Haneli PIN"
@@ -74,8 +84,8 @@ export default function RegisterForm() {
       <PasswordInput
         label="Şifre Onayı"
         placeholder="6 Haneli PIN (Tekrar)"
-        password={password}
-        setPassword={setPassword}
+        password={confirmPassword}
+        setPassword={setConfirmPassword}
       />
 
       <Button content="Kayıt Ol" />

@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import { supabase } from '../../../config/supabase';
+import crypto from "crypto";
+import { supabase } from "../../../config/supabase";
 
 type RefreshTokenRow = {
   id: string;
@@ -12,16 +12,26 @@ type RefreshTokenRow = {
 };
 
 function hashToken(token: string) {
-  return crypto.createHash('sha256').update(token).digest('hex');
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export async function saveRefreshToken(rawToken: string, userId: string, expiresAt?: string) {
+export async function saveRefreshToken(
+  rawToken: string,
+  userId: string,
+  expiresAt?: string
+) {
   const tokenHash = hashToken(rawToken);
-  const ttl = expiresAt ?? new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
+  const ttl =
+    expiresAt ?? new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
-    .from('refresh_tokens')
-    .insert({ user_id: userId, token: tokenHash, expires_at: ttl, revoked: false })
+    .from("refresh_tokens")
+    .insert({
+      user_id: userId,
+      token: tokenHash,
+      expires_at: ttl,
+      revoked: false,
+    })
     .select()
     .maybeSingle();
 
@@ -33,9 +43,9 @@ export async function findValidRefreshToken(rawToken: string) {
   const tokenHash = hashToken(rawToken);
 
   const { data, error } = await supabase
-    .from('refresh_tokens')
-    .select('*')
-    .eq('token', tokenHash)
+    .from("refresh_tokens")
+    .select("*")
+    .eq("token", tokenHash)
     .maybeSingle();
 
   if (error) throw error;
@@ -50,9 +60,9 @@ export async function revokeRefreshTokenById(id: string) {
   const now = new Date().toISOString();
   try {
     const { data, error } = await supabase
-      .from('refresh_tokens')
+      .from("refresh_tokens")
       .update({ revoked: true, revoked_at: now })
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .maybeSingle();
 
@@ -60,11 +70,15 @@ export async function revokeRefreshTokenById(id: string) {
     return data;
   } catch (err: any) {
     const msg = String(err?.message || err);
-    if (msg.includes("Could not find the 'revoked_at' column") || msg.includes('column "revoked_at"') || msg.includes('unknown column')) {
+    if (
+      msg.includes("Could not find the 'revoked_at' column") ||
+      msg.includes('column "revoked_at"') ||
+      msg.includes("unknown column")
+    ) {
       const { data, error } = await supabase
-        .from('refresh_tokens')
+        .from("refresh_tokens")
         .update({ revoked: true })
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .maybeSingle();
 
@@ -85,20 +99,24 @@ export async function revokeAllForUser(userId: string) {
   const now = new Date().toISOString();
   try {
     const { data, error } = await supabase
-      .from('refresh_tokens')
+      .from("refresh_tokens")
       .update({ revoked: true, revoked_at: now })
-      .eq('user_id', userId)
+      .eq("user_id", userId)
       .select();
 
     if (error) throw error;
     return data;
   } catch (err: any) {
     const msg = String(err?.message || err);
-    if (msg.includes("Could not find the 'revoked_at' column") || msg.includes('column "revoked_at"') || msg.includes('unknown column')) {
+    if (
+      msg.includes("Could not find the 'revoked_at' column") ||
+      msg.includes('column "revoked_at"') ||
+      msg.includes("unknown column")
+    ) {
       const { data, error } = await supabase
-        .from('refresh_tokens')
+        .from("refresh_tokens")
         .update({ revoked: true })
-        .eq('user_id', userId)
+        .eq("user_id", userId)
         .select();
 
       if (error) throw error;
@@ -108,22 +126,26 @@ export async function revokeAllForUser(userId: string) {
   }
 }
 
-export async function rotateRefreshToken(oldRaw: string, newRaw: string, userId?: string) {
-  if (!userId) throw new Error('userId required for rotateRefreshToken');
+export async function rotateRefreshToken(
+  oldRaw: string,
+  newRaw: string,
+  userId?: string
+) {
+  if (!userId) throw new Error("userId required for rotateRefreshToken");
 
   // insert new (hash will be stored by saveRefreshToken)
   const newRow = await saveRefreshToken(newRaw, userId, undefined);
 
   // find old
   const old = await findValidRefreshToken(oldRaw);
-  if (!old) throw new Error('Old refresh token not found');
+  if (!old) throw new Error("Old refresh token not found");
 
   // mark old revoked (try with revoked_at, fallback without)
   try {
     const { data, error } = await supabase
-      .from('refresh_tokens')
+      .from("refresh_tokens")
       .update({ revoked: true, revoked_at: new Date().toISOString() })
-      .eq('id', old.id)
+      .eq("id", old.id)
       .select()
       .maybeSingle();
 
@@ -131,11 +153,15 @@ export async function rotateRefreshToken(oldRaw: string, newRaw: string, userId?
     return { newRow, old: data };
   } catch (err: any) {
     const msg = String(err?.message || err);
-    if (msg.includes("Could not find the 'revoked_at' column") || msg.includes('column "revoked_at"') || msg.includes('unknown column')) {
+    if (
+      msg.includes("Could not find the 'revoked_at' column") ||
+      msg.includes('column "revoked_at"') ||
+      msg.includes("unknown column")
+    ) {
       const { data, error } = await supabase
-        .from('refresh_tokens')
+        .from("refresh_tokens")
         .update({ revoked: true })
-        .eq('id', old.id)
+        .eq("id", old.id)
         .select()
         .maybeSingle();
 

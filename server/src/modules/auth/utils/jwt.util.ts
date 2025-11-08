@@ -1,13 +1,13 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
-const ACCESS_EXPIRES = '1h';
-const REFRESH_EXPIRES = '45d';
+const ACCESS_EXPIRES = "1h";
+const REFRESH_EXPIRES = "45d";
 
 const ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
 
 if (!ACCESS_SECRET || !REFRESH_SECRET) {
-  throw new Error('ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET must be set');
+  throw new Error("ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET must be set");
 }
 
 export function signAccessToken(payload: object) {

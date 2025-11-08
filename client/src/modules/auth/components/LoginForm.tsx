@@ -45,7 +45,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={submit}>
       <FormInput
-        label="Telefon Numarası"
+        label="Telefon No"
         value={phone}
         maxLength={10}
         setFunction={setPhone}
@@ -58,6 +58,14 @@ export default function LoginForm() {
         password={password}
         setPassword={setPassword}
       />
+
+      <button
+        type="button"
+        onClick={() => navigate('/forgot-password')}
+        className="text-sm text-blue-500 hover:underline transition-all cursor-pointer"
+      >
+        Şifremi unuttum
+      </button>
 
       <Button content="Giriş Yap" />
 
