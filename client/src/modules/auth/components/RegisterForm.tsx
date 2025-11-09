@@ -1,60 +1,32 @@
-import React, { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
-import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import React from "react";
 import Button from "../../../shared/components/Button";
 import PasswordInput from "./PasswordInput";
 import FormInput from "./FormInput";
 import AuthRedirectMessage from "./AuthRedirect";
+import { useRegisterForm } from "../hooks/useRegisterForm";
 
 export default function RegisterForm() {
-  const [phone, setPhone] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const auth = useAuth();
-  const navigate = useNavigate();
-
-  const getErrorMessage = (err: unknown) => {
-    if (err instanceof Error) return err.message;
-    if (typeof err === "object" && err !== null) {
-      const maybe = err as Record<string, unknown>;
-      const response = maybe.response;
-      if (typeof response === "object" && response !== null) {
-        const data = (response as Record<string, unknown>).data;
-        if (typeof data === "object" && data !== null) {
-          const msg = (data as Record<string, unknown>).message;
-          if (typeof msg === "string") return msg;
-        }
-      }
-    }
-    return String(err);
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await auth.register(phone, fullName, email, password, confirmPassword);
-      toast.success("Başarıyla Kayıt Olundu", { autoClose: 3000 });
-      setPhone("");
-      setFullName("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      navigate("/login");
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Kayıt başarısız");
-    }
-  };
+  const {
+    phone,
+    fullName,
+    email,
+    password,
+    confirmPassword,
+    handlePhoneChange,
+    handleFullNameChange,
+    handleEmailChange,
+    handlePasswordChange,
+    handleConfirmPasswordChange,
+    handleSubmit,
+  } = useRegisterForm();
 
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={handleSubmit}>
       <FormInput
         label="Telefon No"
         value={phone}
         maxLength={10}
-        setFunction={setPhone}
+        setFunction={handlePhoneChange}
         placeholder="5xx xxx xx xx"
       />
 
@@ -62,7 +34,7 @@ export default function RegisterForm() {
         label="Tam Ad"
         value={fullName}
         maxLength={35}
-        setFunction={setFullName}
+        setFunction={handleFullNameChange}
         placeholder="Ad Soyad"
       />
 
@@ -70,7 +42,7 @@ export default function RegisterForm() {
         label="Email"
         value={email}
         maxLength={35}
-        setFunction={setEmail}
+        setFunction={handleEmailChange}
         placeholder="user@xyz.com"
       />
 
@@ -78,14 +50,14 @@ export default function RegisterForm() {
         label="Şifre"
         placeholder="6 Haneli PIN"
         password={password}
-        setPassword={setPassword}
+        setPassword={handlePasswordChange}
       />
 
       <PasswordInput
         label="Şifre Onayı"
         placeholder="6 Haneli PIN (Tekrar)"
         password={confirmPassword}
-        setPassword={setConfirmPassword}
+        setPassword={handleConfirmPasswordChange}
       />
 
       <Button content="Kayıt Ol" />

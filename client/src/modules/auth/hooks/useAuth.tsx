@@ -1,10 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
-import type { RootState } from "../../app/store";
-import {
-  setUser,
-  setAccessToken,
-  logout as logoutAction,
-} from "../store/authSlice";
+import type { RootState } from "../../app/store/index";
+import { setUser, setAccessToken, logout as logoutAction } from "../store/authSlice";
 import API from "../api/api";
 
 export function useAuth() {

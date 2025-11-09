@@ -1,20 +1,13 @@
-import { useSelector } from "react-redux";
-import type { RootState } from "../../app/store";
-import { useAuth } from "../../auth/hooks/useAuth";
+import { useHomePage } from "../hooks/useHomePage";
 
 export default function HomePage() {
-  const auth = useSelector((s: RootState) => s.auth);
-  const { logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
+  const { user, handleLogout, getUserDisplayName } = useHomePage();
+  const displayName = getUserDisplayName();
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-3xl text-white mb-4">
-        Hoş geldiniz
-        {auth.user ? `, ${auth.user.full_name || auth.user.phone}` : ""}!
+        Hoş geldiniz{displayName ? `, ${displayName}` : ""}!
       </h1>
       <p className="text-gray-300 mb-6">
         Bu korumalı bir sayfadır. Giriş yaptıktan sonra buraya erişebilirsiniz.
