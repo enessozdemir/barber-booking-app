@@ -10,6 +10,10 @@ import ForgotPasswordPage from "./modules/auth/pages/ForgotPasswordPage";
 import HomePage from "./modules/home/pages/HomePage";
 import ProtectedRoute from "./modules/auth/components/ProtectedRoute";
 import AppInitializer from "./modules/auth/components/AppInitializer";
+import setupAxios from "./config/setupAxios";
+
+// Setup axios interceptors
+setupAxios();
 
 function App() {
   return (

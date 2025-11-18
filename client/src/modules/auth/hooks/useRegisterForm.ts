@@ -17,13 +17,13 @@ export const useRegisterForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const auth = useAuth();
-  const { getErrorMessage } = useErrorHandler();
+  const { handleError } = useErrorHandler();
   const { validatePhone, validateEmail, validatePassword, validatePasswordMatch, validateFullName } =
     useFormValidation();
 
   // Non-sensitive fields stored in Redux
   const form = useSelector((state: RootState) => state.form.register);
-  
+
   // Sensitive fields (passwords) stored in local state only - never in Redux
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -75,7 +75,7 @@ export const useRegisterForm = () => {
       setConfirmPassword('');
       navigate('/login');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || 'Kayıt başarısız');
+      toast.error(handleError(err));
     }
   };
 

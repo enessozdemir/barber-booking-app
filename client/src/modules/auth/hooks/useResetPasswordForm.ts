@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import API from '../api/api';
+import axios from 'axios';
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import { useFormValidation } from '../../../shared/hooks/useFormValidation';
 
 export const useResetPasswordForm = () => {
   const navigate = useNavigate();
   const params = useParams();
-  const { getErrorMessage } = useErrorHandler();
+  const { handleError } = useErrorHandler();
   const { validatePassword, validatePasswordMatch } = useFormValidation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,7 +19,7 @@ export const useResetPasswordForm = () => {
 
   useEffect(() => {
     if (!id || !token) return;
-    API.get(`/auth/reset-password/${id}/${token}`).catch(() => {
+    axios.get(`/auth/reset-password/${id}/${token}`).catch(() => {
       toast.error('Geçersiz veya süresi dolmuş reset linki');
       navigate('/login');
     });
@@ -39,11 +39,11 @@ export const useResetPasswordForm = () => {
 
     setLoading(true);
     try {
-      await API.post(`/auth/reset-password/${id}/${token}`, { password });
+      await axios.post(`/auth/reset-password/${id}/${token}`, { password });
       toast.success('Şifre başarıyla güncellendi — lütfen giriş yapın');
       navigate('/login');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || 'Şifre sıfırlanamadı');
+      toast.error(handleError(err));
     } finally {
       setLoading(false);
     }

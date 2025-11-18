@@ -17,9 +17,13 @@ export async function register(req: Request, res: Response) {
 
     return res.status(201).json({ user, message: "Registered successfully" });
   } catch (err: any) {
-    return res
-      .status(400)
-      .json({ message: err.message || "Registration failed" });
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message || 'Registration failed'
+      }
+    });
   }
 }
 
@@ -39,7 +43,13 @@ export async function login(req: Request, res: Response) {
     });
     return res.json({ user, accessToken });
   } catch (err: any) {
-    return res.status(401).json({ message: err.message || "Login failed" });
+    const statusCode = err.statusCode || 401;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message || 'Login failed'
+      }
+    });
   }
 }
 
@@ -49,8 +59,14 @@ export async function refresh(req: Request, res: Response) {
     const refreshToken =
       (req.cookies && req.cookies.refreshToken) || req.body?.refreshToken;
 
-    if (!refreshToken)
-      return res.status(400).json({ message: "Missing refreshToken" });
+    if (!refreshToken) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_REFRESH_TOKEN',
+          message: 'Missing refreshToken'
+        }
+      });
+    }
 
     const data = await authService.refreshAccessToken(refreshToken);
 
@@ -66,7 +82,13 @@ export async function refresh(req: Request, res: Response) {
     }
     return res.json({ accessToken: data.accessToken, user: data.user });
   } catch (err: any) {
-    return res.status(401).json({ message: err.message || "Refresh failed" });
+    const statusCode = err.statusCode || 401;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message || 'Refresh failed'
+      }
+    });
   }
 }
 
@@ -74,27 +96,51 @@ export async function logout(req: Request, res: Response) {
   try {
     const refreshToken =
       (req.cookies && req.cookies.refreshToken) || req.body?.refreshToken;
-    if (!refreshToken)
-      return res.status(400).json({ message: "Missing refreshToken" });
+    if (!refreshToken) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_REFRESH_TOKEN',
+          message: 'Missing refreshToken'
+        }
+      });
+    }
     await authService.logout(refreshToken);
     // clear cookie
     res.clearCookie("refreshToken");
     return res.json({ message: "Logged out" });
   } catch (err: any) {
-    return res.status(400).json({ message: err.message || "Logout failed" });
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message || 'Logout failed'
+      }
+    });
   }
 }
 
 export async function forgotPassword(req: Request, res: Response) {
   try {
     const { phone, email } = req.body;
-    if (!phone || !email)
-      return res.status(400).json({ message: "Missing fields" });
+    if (!phone || !email) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Missing fields'
+        }
+      });
+    }
 
     await authService.forgotPassword(phone, email);
     return res.json({ message: "Reset link sent if user exists" });
   } catch (err: any) {
-    return res.status(400).json({ message: err.message });
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message
+      }
+    });
   }
 }
 
@@ -114,11 +160,24 @@ export async function resetPassword(req: Request, res: Response) {
   try {
     const { id, token } = req.params;
     const { password } = req.body;
-    if (!password) return res.status(400).json({ message: "Missing password" });
+    if (!password) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_PASSWORD',
+          message: 'Missing password'
+        }
+      });
+    }
 
     await authService.resetPassword(id, token, password);
     return res.json({ message: "Password updated successfully" });
   } catch (err: any) {
-    return res.status(400).json({ message: err.message });
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message
+      }
+    });
   }
 }

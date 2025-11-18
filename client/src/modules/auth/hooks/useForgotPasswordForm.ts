@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import type { RootState } from '../../app/store';
-import API from '../api/api';
+import axios from 'axios';
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import { useFormValidation } from '../../../shared/hooks/useFormValidation';
 import {
@@ -15,7 +15,7 @@ import {
 export const useForgotPasswordForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { getErrorMessage } = useErrorHandler();
+  const { handleError } = useErrorHandler();
   const { validatePhone, validateEmail } = useFormValidation();
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +39,7 @@ export const useForgotPasswordForm = () => {
     setLoading(true);
     try {
       console.info('[forgot page] request payload', { phone: form.phone, email: form.email });
-      const res = await API.post('/auth/forgot-password', {
+      const res = await axios.post('/auth/forgot-password', {
         phone: form.phone,
         email: form.email,
       });
@@ -51,7 +51,7 @@ export const useForgotPasswordForm = () => {
       navigate('/login');
     } catch (err: unknown) {
       console.error('forgot-password error', err);
-      toast.error(getErrorMessage(err) || 'İstek başarısız');
+      toast.error(handleError(err));
     } finally {
       setLoading(false);
     }

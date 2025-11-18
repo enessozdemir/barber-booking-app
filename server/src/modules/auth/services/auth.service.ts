@@ -8,10 +8,11 @@ import {
   verifyRefreshToken,
 } from "../utils/jwt.util";
 import * as tokenService from "./token.service";
+import { AppError } from "../utils/AppError";
+import { AUTH_ERRORS } from "../constants/errorCodes";
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET as string;
-
 export async function registerUser({
   phone,
   email,
@@ -29,11 +30,11 @@ export async function registerUser({
 }) {
   try {
     if (!phone || !email || !full_name || !password || !confirm_password) {
-      throw new Error("Missing fields");
+      throw new AppError(AUTH_ERRORS.MISSING_FIELDS, "Missing fields", 400);
     }
 
     if (password !== confirm_password) {
-      throw new Error("Passwords do not match");
+      throw new AppError(AUTH_ERRORS.PASSWORDS_DO_NOT_MATCH, "Passwords do not match", 400);
     }
 
     const { data: existingPhone } = await supabase
@@ -42,7 +43,7 @@ export async function registerUser({
       .eq("phone", phone)
       .maybeSingle();
     if (existingPhone) {
-      throw new Error("Phone already registered");
+      throw new AppError(AUTH_ERRORS.PHONE_ALREADY_REGISTERED, "Phone already registered", 400);
     }
 
     const { data: existingEmail } = await supabase
@@ -51,7 +52,7 @@ export async function registerUser({
       .eq("email", email)
       .maybeSingle();
     if (existingEmail) {
-      throw new Error("Email already registered");
+      throw new AppError(AUTH_ERRORS.EMAIL_ALREADY_REGISTERED, "Email already registered", 400);
     }
   } catch (err) {
     throw err;
@@ -75,17 +76,23 @@ export async function loginUser({
   password: string;
 }) {
   try {
-    if (!phone || !password) return { error: "Missing phone or password" };
+    if (!phone || !password) {
+      throw new AppError(AUTH_ERRORS.MISSING_PHONE_OR_PASSWORD, "Missing phone or password", 400);
+    }
 
     const { data: user, error } = await supabase
       .from("users")
       .select("*")
       .eq("phone", phone)
       .maybeSingle();
-    if (error || !user) throw new Error("Invalid credentials");
+    if (error || !user) {
+      throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
+    }
 
     const match = await bcrypt.compare(password, user.password as string);
-    if (!match) throw new Error("Invalid credentials");
+    if (!match) {
+      throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
+    }
 
     const payload = { id: user.id, role: user.role };
     const accessToken = signAccessToken(payload);
@@ -106,11 +113,15 @@ export async function refreshAccessToken(refreshToken: string) {
   // verify token signature
   const payload = verifyRefreshToken(refreshToken);
 
-  if (!payload || !payload.id) throw new Error("Invalid refresh token");
+  if (!payload || !payload.id) {
+    throw new AppError(AUTH_ERRORS.INVALID_REFRESH_TOKEN, "Invalid refresh token", 401);
+  }
   // check token exists and is valid (not revoked / expired)
   const row = await tokenService.findValidRefreshToken(refreshToken);
 
-  if (!row) throw new Error("Refresh token not found or revoked");
+  if (!row) {
+    throw new AppError(AUTH_ERRORS.REFRESH_TOKEN_NOT_FOUND, "Refresh token not found or revoked", 401);
+  }
 
   // fetch user data to return to client
   const { data: user, error } = await supabase
@@ -192,14 +203,16 @@ export async function verifyResetToken(id: string, token: string) {
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  if (error || !user) throw new Error("User not found");
+  if (error || !user) {
+    throw new AppError(AUTH_ERRORS.USER_NOT_FOUND, "User not found", 404);
+  }
 
   const secret = JWT_SECRET + user.password;
   try {
     jwt.verify(token, secret);
     return true;
   } catch {
-    throw new Error("Invalid or expired token");
+    throw new AppError(AUTH_ERRORS.INVALID_OR_EXPIRED_TOKEN, "Invalid or expired token", 400);
   }
 }
 
@@ -213,7 +226,9 @@ export async function resetPassword(
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  if (error || !user) throw new Error("User not found");
+  if (error || !user) {
+    throw new AppError(AUTH_ERRORS.USER_NOT_FOUND, "User not found", 404);
+  }
 
   const secret = JWT_SECRET + user.password;
 
@@ -227,6 +242,6 @@ export async function resetPassword(
     if (updateError) throw updateError;
     return true;
   } catch {
-    throw new Error("Invalid or expired token");
+    throw new AppError(AUTH_ERRORS.INVALID_OR_EXPIRED_TOKEN, "Invalid or expired token", 400);
   }
 }

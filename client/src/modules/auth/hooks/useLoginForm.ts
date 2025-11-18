@@ -12,12 +12,12 @@ export const useLoginForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const auth = useAuth();
-  const { getErrorMessage } = useErrorHandler();
+  const { handleError } = useErrorHandler();
   const { validatePhone, validatePassword } = useFormValidation();
 
   // Phone stored in Redux (non-sensitive)
   const phone = useSelector((state: RootState) => state.form.login.phone);
-  
+
   // Password stored in local state only (sensitive data - never in Redux)
   const [password, setPassword] = useState('');
 
@@ -42,7 +42,7 @@ export const useLoginForm = () => {
       setPassword(''); // Clear password from local state
       navigate('/home');
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || 'Login failed');
+      toast.error(handleError(err));
     }
   };
 
