@@ -22,7 +22,7 @@ export async function saveRefreshToken(
 ) {
   const tokenHash = hashToken(rawToken);
   const ttl =
-    expiresAt ?? new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
+    expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
     .from("refresh_tokens")
@@ -46,12 +46,14 @@ export async function findValidRefreshToken(rawToken: string) {
     .from("refresh_tokens")
     .select("*")
     .eq("token", tokenHash)
+    .eq("revoked", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) throw error;
   if (!data) return null;
 
-  if (data.revoked) return null;
   if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
   return data;
 }

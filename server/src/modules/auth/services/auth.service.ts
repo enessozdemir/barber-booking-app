@@ -17,15 +17,25 @@ export async function registerUser({
   email,
   full_name,
   password,
+  confirm_password,
   role = "user",
 }: {
   phone: string;
   email: string;
   full_name: string;
   password: string;
+  confirm_password: string;
   role?: string;
 }) {
   try {
+    if (!phone || !email || !full_name || !password || !confirm_password) {
+      throw new Error("Missing fields");
+    }
+
+    if (password !== confirm_password) {
+      throw new Error("Passwords do not match");
+    }
+
     const { data: existingPhone } = await supabase
       .from("users")
       .select("id")
@@ -44,7 +54,7 @@ export async function registerUser({
       throw new Error("Email already registered");
     }
   } catch (err) {
-    // continue
+    throw err;
   }
 
   const hashed = await bcrypt.hash(password, SALT_ROUNDS);
@@ -64,37 +74,52 @@ export async function loginUser({
   phone: string;
   password: string;
 }) {
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("phone", phone)
-    .maybeSingle();
-  if (error || !user) throw new Error("Invalid credentials");
+  try {
+    if (!phone || !password) return { error: "Missing phone or password" };
 
-  const match = await bcrypt.compare(password, user.password as string);
-  if (!match) throw new Error("Invalid credentials");
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (error || !user) throw new Error("Invalid credentials");
 
-  const payload = { id: user.id, role: user.role };
-  const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken(payload);
+    const match = await bcrypt.compare(password, user.password as string);
+    if (!match) throw new Error("Invalid credentials");
 
-  // store hashed refresh token in DB (token rotation / revocation support)
-  await tokenService.saveRefreshToken(refreshToken, user.id);
+    const payload = { id: user.id, role: user.role };
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
 
-  // don't return password
-  // create shallow copy to avoid mutating supabase return
-  const safeUser = { ...user } as any;
-  delete safeUser.password;
-  return { user: safeUser, accessToken, refreshToken };
+    //save refresh token to db
+    await tokenService.saveRefreshToken(refreshToken, user.id);
+
+    const safeUser = { ...user } as any;
+    delete safeUser.password;
+    return { user: safeUser, accessToken, refreshToken };
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function refreshAccessToken(refreshToken: string) {
   // verify token signature
   const payload = verifyRefreshToken(refreshToken);
+
   if (!payload || !payload.id) throw new Error("Invalid refresh token");
   // check token exists and is valid (not revoked / expired)
   const row = await tokenService.findValidRefreshToken(refreshToken);
+
   if (!row) throw new Error("Refresh token not found or revoked");
+
+  // fetch user data to return to client
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", payload.id)
+    .maybeSingle();
+
+  if (error || !user) throw new Error("User not found");
 
   // rotation: issue new refresh token and revoke old one
   const newRefresh = signRefreshToken({ id: payload.id, role: payload.role });
@@ -102,7 +127,11 @@ export async function refreshAccessToken(refreshToken: string) {
 
   await tokenService.rotateRefreshToken(refreshToken, newRefresh, payload.id);
 
-  return { accessToken: newAccess, refreshToken: newRefresh };
+  // remove password from user object
+  const safeUser = { ...user } as any;
+  delete safeUser.password;
+
+  return { accessToken: newAccess, refreshToken: newRefresh, user: safeUser };
 }
 
 export async function logout(refreshToken: string) {
@@ -128,7 +157,7 @@ export async function forgotPassword(phone: string, email: string) {
 
   const link = `${process.env.CLIENT_URL}/reset-password/${user.id}/${token}`;
 
-  console.log('Sending reset email with:', process.env.GM_EMAIL);
+  console.log("Sending reset email with:", process.env.GM_EMAIL);
 
   const gmEmail = process.env.GM_EMAIL;
   const gmPass = process.env.GM_PASSWORD;
@@ -146,12 +175,12 @@ export async function forgotPassword(phone: string, email: string) {
         text: `Şifreni sıfırlamak için bu linke tıkla: ${link}`,
       });
     } catch (err) {
-      console.error('Failed to send reset email', err);
+      console.error("Failed to send reset email", err);
       // still return true to avoid leaking user existence; in dev you can check server logs for the link
     }
   } else {
     // Development fallback: log the link so developer can copy it
-    console.info('[reset link]', link);
+    console.info("[reset link]", link);
   }
 
   return true;

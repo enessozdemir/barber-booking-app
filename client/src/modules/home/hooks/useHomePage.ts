@@ -1,5 +1,5 @@
 import { useSelector } from 'react-redux';
-import type { RootState } from '../../../app/store';
+import type { RootState } from '../../app/store/index';
 import { useAuth } from '../../auth/hooks/useAuth';
 
 export const useHomePage = () => {

@@ -4,7 +4,7 @@ export const useFormValidation = () => {
   const validatePhone = (phone: string): boolean => {
     const phoneDigits = (phone || '').replace(/\D/g, '');
     if (phoneDigits.length !== 10) {
-      toast.error('Lütfen 10 haneli telefon numarası girin (ör. 5061086117)');
+      toast.error('Lütfen 10 haneli telefon numarası girin');
       return false;
     }
     return true;

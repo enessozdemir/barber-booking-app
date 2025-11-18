@@ -9,7 +9,9 @@ type Props = {
 
 export default function ProtectedRoute({ children }: Props) {
   const auth = useSelector((s: RootState) => s.auth);
-  const isAuthed = Boolean(auth.user && auth.accessToken);
+  // while app is initializing (trying refresh), avoid redirecting
+  if (!auth.initialized) return null;
+  const isAuthed = Boolean(auth.accessToken);
   if (!isAuthed) return <Navigate to="/login" replace />;
   return children;
 }

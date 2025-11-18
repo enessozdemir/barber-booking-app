@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState } from "../../app/store/index";
-import { setUser, setAccessToken, logout as logoutAction } from "../store/authSlice";
+import { setUser, setAccessToken, logout as logoutAction, setInitialized } from "../store/authSlice";
 import API from "../api/api";
 
 export function useAuth() {
@@ -12,6 +12,7 @@ export function useAuth() {
     const { user, accessToken } = res.data;
     dispatch(setUser(user));
     dispatch(setAccessToken(accessToken));
+    dispatch(setInitialized(true));
     return res.data;
   };
 
@@ -39,5 +40,21 @@ export function useAuth() {
     dispatch(logoutAction());
   };
 
-  return { state, login, register, logout };
+  const tryRefreshToken = async () => {
+    try {
+      // attempt to refresh using HttpOnly cookie
+      const res = await API.post("/auth/refresh", {}, { withCredentials: true });
+      const { accessToken, user } = res.data;
+      dispatch(setAccessToken(accessToken));
+      dispatch(setUser(user));
+    } catch (error) {
+      console.log(error);
+      console.log("Token refresh failed, user needs to login");
+    } finally {
+      // mark initialization as complete
+      dispatch(setInitialized(true));
+    }
+  };
+
+  return { state, login, register, logout, tryRefreshToken };
 }

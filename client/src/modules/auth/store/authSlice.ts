@@ -12,6 +12,7 @@ type AuthState = {
   user?: User | null;
   accessToken?: string | null;
   loading: boolean;
+  initialized: boolean;
   error?: string | null;
 };
 
@@ -19,6 +20,7 @@ const initialState: AuthState = {
   user: null,
   accessToken: null,
   loading: false,
+  initialized: false,
   error: null,
 };
 
@@ -38,6 +40,9 @@ const slice = createSlice({
     setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
+    setInitialized(state, action: PayloadAction<boolean>) {
+      state.initialized = action.payload;
+    },
     logout(state) {
       state.user = null;
       state.accessToken = null;
@@ -46,5 +51,5 @@ const slice = createSlice({
   },
 });
 
-export const { setLoading, setUser, setAccessToken, setError, logout } = slice.actions;
+export const { setLoading, setUser, setAccessToken, setError, setInitialized, logout } = slice.actions;
 export default slice.reducer;

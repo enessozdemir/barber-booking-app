@@ -1,6 +1,6 @@
 import axios from "axios";
 import { store } from "../../app/store";
-import { setAccessToken, logout as logoutAction } from "../store/authSlice";
+import { setAccessToken, setUser, logout as logoutAction } from "../store/authSlice";
 import type { AxiosRequestConfig } from "axios";
 import type { RootState } from "../../app/store";
 
@@ -65,8 +65,11 @@ API.interceptors.response.use(
           {},
           { withCredentials: true }
         );
-        const { accessToken } = response.data;
+        const { accessToken, user } = response.data;
         store.dispatch(setAccessToken(accessToken));
+        if (user) {
+          store.dispatch(setUser(user));
+        }
         if (originalRequest.headers)
           originalRequest.headers.Authorization = "Bearer " + accessToken;
         processQueue(null, accessToken);
