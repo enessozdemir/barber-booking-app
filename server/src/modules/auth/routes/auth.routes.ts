@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller";
+import { verifyToken } from "../middleware/verifyToken";
 
 const router = Router();
 
@@ -10,5 +11,8 @@ router.post("/logout", authController.logout);
 router.post("/forgot-password", authController.forgotPassword);
 router.get("/reset-password/:id/:token", authController.verifyResetToken);
 router.post("/reset-password/:id/:token", authController.resetPassword);
+
+// Protected route
+router.put("/profile", verifyToken, authController.updateProfile);
 
 export default router;

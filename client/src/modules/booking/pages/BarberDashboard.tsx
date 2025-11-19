@@ -93,24 +93,26 @@ export default function BarberDashboard() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+      <div className="min-h-screen p-6 pt-24 bg-dark">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Berber Paneli - {user?.full_name}
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+            {user?.full_name}
           </h1>
-          <p className="text-gray-400">Günlük randevularınızı yönetin</p>
+          <p className="text-sm sm:text-base text-gray-400">Günlük randevularınızı yönetin</p>
         </div>
 
-        <div className="bg-gray-800 rounded-xl p-6 shadow-xl mb-6">
-          <label className="block text-gray-300 mb-2 font-semibold">Tarih Seçin</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
+        <div className="mb-6">
+            <label className="block text-gray-300 mb-2">Tarih Seç</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              onKeyDown={(e) => e.preventDefault()}
+              className="px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+            />
+          </div>
 
         <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
           <h2 className="text-2xl font-bold text-white mb-4">
@@ -219,13 +221,13 @@ export default function BarberDashboard() {
               <div className="flex gap-3">
                 <button
                   onClick={() => deleteBooking(selectedBooking.id)}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all cursor-pointer"
                 >
                   Sil
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all"
+                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all cursor-pointer"
                 >
                   Kapat
                 </button>

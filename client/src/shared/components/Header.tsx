@@ -3,15 +3,17 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../modules/app/store';
 import { useAuth } from '../../modules/auth/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export default function Header() {
   const user = useSelector((state: RootState) => state.auth.user);
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -22,6 +24,35 @@ export default function Header() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Scroll listener for glassmorphism effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollThreshold = 80;
+      setIsScrolled(window.scrollY > scrollThreshold);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Fetch barber avatar if user is a barber
+  useEffect(() => {
+    const fetchBarberAvatar = async () => {
+      if (user?.role === 'barber') {
+        try {
+          const res = await axios.get(`/barbers/${user.id}`);
+          if (res.data.barber?.avatar_url) {
+            setAvatarUrl(res.data.barber.avatar_url);
+          }
+        } catch {
+          // No avatar or not a barber
+        }
+      }
+    };
+
+    fetchBarberAvatar();
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -38,32 +69,73 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-gray-800 shadow-lg border-b border-gray-700">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex justify-between items-center">
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        isScrolled ? 'py-3' : 'py-4'
+      }`}
+      style={{
+        backgroundColor: isScrolled ? 'rgba(10, 10, 10, 0.7)' : 'var(--color-dark)',
+        backdropFilter: isScrolled ? 'blur(10px)' : 'none',
+        borderBottom: isScrolled ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+      }}
+    >
+      <div 
+        className={`mx-auto transition-all duration-500 ${
+          isScrolled ? 'max-w-7xl' : 'max-w-7xl'
+        }`}
+      >
+        <div
+          className={`flex justify-between items-center transition-all duration-500 ${
+            isScrolled
+              ? 'bg-black/20 backdrop-blur-[12px] rounded-[1.5rem] p-2 sm:p-3 mx-3 sm:mx-6 mt-2 sm:mt-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10'
+              : 'bg-transparent border border-transparent px-6 xl:px-0'
+          }`}
+        >
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-white">Mühendis Berber</h1>
+            <h1 
+              onClick={() => navigate('/home')}
+              className="text-lg sm:text-2xl font-bold text-white cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              Mühendis Berber
+            </h1>
           </div>
 
           {/* User Avatar */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-10 h-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-10 h-10 rounded-full text-white font-semibold flex items-center justify-center hover:opacity-80 transition-all focus:outline-none cursor-pointer overflow-hidden bg-transparent border-2 border-secondary"
             >
-              {getInitials(user?.full_name)}
+              {avatarUrl ? (
+                <img 
+                  src={avatarUrl} 
+                  alt={user?.full_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                getInitials(user?.full_name)
+              )}
             </button>
 
             {/* Dropdown */}
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-lg shadow-xl py-2 z-50">
-                <div className="px-4 py-2 border-b border-gray-600">
-                  <p className="text-white font-semibold text-sm">{user?.full_name}</p>
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl py-2 z-50 border border-gray-700">
+                <div className="px-4 py-2 border-b border-gray-700">
+                  <p className="text-sm font-semibold text-white">{user?.full_name}</p>
                 </div>
                 <button
+                  onClick={() => {
+                    navigate('/profile');
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  Profil
+                </button>
+                <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-red-400 hover:bg-gray-600 transition-all"
+                  className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors"
                 >
                   Çıkış Yap
                 </button>

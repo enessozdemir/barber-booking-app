@@ -245,3 +245,57 @@ export async function resetPassword(
     throw new AppError(AUTH_ERRORS.INVALID_OR_EXPIRED_TOKEN, "Invalid or expired token", 400);
   }
 }
+
+export async function updateUserProfile(userId: string, data: { full_name?: string; email?: string; phone?: string }) {
+  // Validate input
+  if (!data.full_name && !data.email && !data.phone) {
+    throw new AppError("INVALID_INPUT", "En az bir alan güncellenmelidir", 400);
+  }
+
+  // Check if email is being updated and if it's already taken
+  if (data.email) {
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", data.email)
+      .neq("id", userId)
+      .maybeSingle();
+
+    if (existingUser) {
+      throw new AppError("EMAIL_EXISTS", "Bu e-posta adresi zaten kullanılıyor", 400);
+    }
+  }
+
+  // Check if phone is being updated and if it's already taken
+  if (data.phone) {
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("phone", data.phone)
+      .neq("id", userId)
+      .maybeSingle();
+
+    if (existingUser) {
+      throw new AppError("PHONE_EXISTS", "Bu telefon numarası zaten kullanılıyor", 400);
+    }
+  }
+
+  // Update user
+  const updateData: any = {};
+  if (data.full_name) updateData.full_name = data.full_name;
+  if (data.email) updateData.email = data.email;
+  if (data.phone) updateData.phone = data.phone;
+
+  const { data: updatedUser, error } = await supabase
+    .from("users")
+    .update(updateData)
+    .eq("id", userId)
+    .select("id, phone, email, full_name, role")
+    .single();
+
+  if (error) {
+    throw new AppError("UPDATE_FAILED", "Profil güncellenemedi", 400);
+  }
+
+  return updatedUser;
+}

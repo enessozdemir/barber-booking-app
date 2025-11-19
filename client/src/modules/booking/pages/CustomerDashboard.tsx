@@ -8,7 +8,6 @@ import Header from '../../../shared/components/Header';
 interface Barber {
   id: string;
   active: boolean;
-  rating: number;
   created_at: string;
   users: {
     id: string;
@@ -87,26 +86,51 @@ export default function CustomerDashboard() {
     return today.toISOString().split('T')[0];
   };
 
+  const formatPhoneNumber = (phone: string) => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Format as +90 XXX XXX XX XX
+    if (cleaned.length === 11 && cleaned.startsWith('0')) {
+      // Remove leading 0 and add +90
+      const withoutZero = cleaned.substring(1);
+      return `+90 ${withoutZero.substring(0, 3)} ${withoutZero.substring(3, 6)} ${withoutZero.substring(6, 8)} ${withoutZero.substring(8, 10)}`;
+    } else if (cleaned.length === 10) {
+      // Already without leading 0
+      return `+90 ${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6, 8)} ${cleaned.substring(8, 10)}`;
+    }
+    // Return as is if format is unexpected
+    return phone;
+  };
+
+  const getBarberInitials = (name: string) => {
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+      <div className="min-h-screen p-6 pt-24 bg-dark">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
             Hoş geldiniz, {authState.user?.full_name}!
           </h1>
-          <p className="text-gray-400">Randevu oluşturun veya mevcut randevularınızı görüntüleyin</p>
+          <p className="text-sm sm:text-base text-gray-400">Randevu oluşturun veya mevcut randevularınızı görüntüleyin</p>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-4 mb-6">
           <button
             onClick={() => setActiveTab('book')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer ${
               activeTab === 'book'
-                ? 'bg-blue-600 text-white shadow-lg'
+                ? 'bg-secondary shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
@@ -114,9 +138,9 @@ export default function CustomerDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('my-bookings')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer ${
               activeTab === 'my-bookings'
-                ? 'bg-blue-600 text-white shadow-lg'
+                ? 'bg-secondary shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
@@ -126,118 +150,154 @@ export default function CustomerDashboard() {
 
         {/* Book Tab */}
         {activeTab === 'book' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'grid grid-cols-1 lg:grid-cols-12 gap-6' : ''}`}>
             {/* Barber List */}
-            <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-2xl font-bold text-white mb-4">Berberler</h2>
-              {booking.loading ? (
-                <p className="text-gray-400">Yükleniyor...</p>
-              ) : booking.barbers.length === 0 ? (
-                <p className="text-gray-400">Aktif berber bulunamadı</p>
-              ) : (
-                <div className="space-y-3">
-                  {booking.barbers.map((barber) => (
-                    <div
-                      key={barber.id}
-                      onClick={() => handleBarberSelect(barber)}
-                      className={`p-4 rounded-lg cursor-pointer transition-all ${
-                        booking.selectedBarber?.id === barber.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                      }`}
-                    >
-                      <h3 className="font-semibold text-lg">{barber.users.full_name}</h3>
-                      <p className="text-sm opacity-80">{barber.users.phone}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'lg:col-span-4' : 'w-full'}`}>
+              <div className="bg-navy rounded-xl p-6 shadow-xl">
+                <h2 className="text-2xl font-bold text-white mb-6">Berberler</h2>
+                {booking.loading ? (
+                  <p className="text-gray-400">Yükleniyor...</p>
+                ) : booking.barbers.length === 0 ? (
+                  <p className="text-gray-400">Aktif berber bulunamadı</p>
+                ) : (
+                  <div className={`grid gap-4 ${showBookingForm && booking.selectedBarber ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                    {(!showBookingForm || !booking.selectedBarber ? booking.barbers : booking.barbers.filter(b => b.id === booking.selectedBarber?.id)).map((barber) => (
+                      <div
+                        key={barber.id}
+                        onClick={() => handleBarberSelect(barber)}
+                        className={`rounded-xl p-6 shadow-xl cursor-pointer hover:shadow-lg transition-all flex flex-col items-center text-center ${
+                          booking.selectedBarber?.id === barber.id
+                            ? 'bg-secondary text-white'
+                            : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                        }`}
+                      >
+                        {/* Avatar */}
+                        <div 
+                          className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl mb-4 overflow-hidden ${
+                            booking.selectedBarber?.id === barber.id ? 'bg-white/20' : 'bg-secondary'
+                          }`}
+                        >
+                          {barber.avatar_url ? (
+                            <img 
+                              src={barber.avatar_url} 
+                              alt={barber.users.full_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            getBarberInitials(barber.users.full_name)
+                          )}
+                        </div>
+                        
+                        {/* Name */}
+                        <h3 className="font-semibold text-lg mb-2">{barber.users.full_name}</h3>
+                        
+                        {/* Phone */}
+                        <p className="text-sm opacity-80">{formatPhoneNumber(barber.users.phone)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Booking Form */}
             {showBookingForm && booking.selectedBarber && (
-              <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  Randevu Oluştur - {booking.selectedBarber.users.full_name}
-                </h2>
-                <form onSubmit={handleBookingSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-gray-300 mb-2">Tarih</label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      min={getMinDate()}
-                      className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      required
-                    />
-                  </div>
-
-                  {selectedDate && (
-                    <div>
-                      <label className="block text-gray-300 mb-2">Saat</label>
-                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                        {booking.availableSlots.map((slot) => {
-                          // Calculate end time for display
-                          const [hours, minutes] = slot.time.split(':').map(Number);
-                          const totalMinutes = hours * 60 + minutes + 30;
-                          const endHours = Math.floor(totalMinutes / 60);
-                          const endMinutes = totalMinutes % 60;
-                          const endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-                          
-                          return (
-                            <button
-                              key={slot.time}
-                              type="button"
-                              onClick={() => slot.available && setSelectedTime(slot.time)}
-                              disabled={!slot.available}
-                              className={`px-3 py-2 rounded-lg font-semibold transition-all text-sm ${
-                                selectedTime === slot.time
-                                  ? 'bg-blue-600 text-white'
-                                  : slot.available
-                                  ? 'bg-gray-700 text-white hover:bg-gray-600'
-                                  : 'bg-red-900 text-red-300 cursor-not-allowed border border-red-700'
-                              }`}
-                            >
-                              {slot.time} - {endTime}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-gray-300 mb-2">Not (Opsiyonel)</label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      rows={3}
-                      placeholder="Özel bir isteğiniz varsa buraya yazabilirsiniz..."
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
+              <div className="lg:col-span-8">
+                <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-white">
+                      Randevu Oluştur - {booking.selectedBarber.users.full_name}
+                    </h2>
                     <button
-                      type="submit"
-                      disabled={!selectedDate || !selectedTime}
-                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed transition-all"
-                    >
-                      Randevu Oluştur
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => {
                         setShowBookingForm(false);
                         selectBarber(null);
                       }}
-                      className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all"
+                      className="text-gray-400 hover:text-white transition-all"
                     >
-                      İptal
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </div>
-                </form>
+                  <form onSubmit={handleBookingSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Tarih</label>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => handleDateChange(e.target.value)}
+                        min={getMinDate()}
+                        onKeyDown={(e) => e.preventDefault()}
+                        className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                        required
+                      />
+                    </div>
+
+                    {selectedDate && (
+                      <div>
+                        <label className="block text-gray-300 mb-2">Saat</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                          {booking.availableSlots.map((slot) => {
+                            // Calculate end time for display
+                            const [hours, minutes] = slot.time.split(':').map(Number);
+                            const totalMinutes = hours * 60 + minutes + 30;
+                            const endHours = Math.floor(totalMinutes / 60);
+                            const endMinutes = totalMinutes % 60;
+                            const endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+                            
+                            return (
+                              <button
+                                key={slot.time}
+                                type="button"
+                                onClick={() => slot.available && setSelectedTime(slot.time)}
+                                disabled={!slot.available}
+                                className={`px-4 py-2 text-white rounded-lg hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                                  selectedTime === slot.time ? 'bg-secondary' : 'bg-gray-700'
+                                }`}
+                              >
+                                {slot.time} - {endTime}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-gray-300 mb-2">Not (Opsiyonel)</label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        rows={3}
+                        placeholder="Özel bir isteğiniz varsa buraya yazabilirsiniz..."
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={!selectedDate || !selectedTime}
+                        className={`w-full py-3 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                          selectedDate && selectedTime ? 'bg-secondary' : 'bg-gray-700'
+                        }`}
+                      >
+                        Randevu Oluştur
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowBookingForm(false);
+                          selectBarber(null);
+                        }}
+                        className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all cursor-pointer"
+                      >
+                        İptal
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>
@@ -285,7 +345,7 @@ export default function CustomerDashboard() {
                     {b.status === 'pending' && (
                       <button
                         onClick={() => handleCancelBooking(b.id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all cursor-pointer"
                       >
                         İptal Et
                       </button>

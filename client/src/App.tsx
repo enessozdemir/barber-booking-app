@@ -8,6 +8,7 @@ import RegisterPage from "./modules/auth/pages/RegisterPage";
 import ResetPasswordPage from "./modules/auth/pages/ResetPasswordPage";
 import ForgotPasswordPage from "./modules/auth/pages/ForgotPasswordPage";
 import RoleBasedHome from "./modules/home/components/RoleBasedHome";
+import ProfilePage from "./modules/profile/pages/ProfilePage";
 import ProtectedRoute from "./modules/auth/components/ProtectedRoute";
 import AppInitializer from "./modules/auth/components/AppInitializer";
 import setupAxios from "./config/setupAxios";
@@ -19,26 +20,42 @@ function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <AppInitializer>
-          <div>
-            <ToastContainer autoClose={3000} pauseOnHover={false} theme="dark" />
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password/:id/:token" element={<ResetPasswordPage />} />
-              <Route
-                path="/home"
-                element={
-                  <ProtectedRoute>
-                    <RoleBasedHome />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/" element={<LoginPage />} />
-            </Routes>
-          </div>
-        </AppInitializer>
+        <AppInitializer />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <RoleBasedHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<LoginPage />} />
+        </Routes>
       </BrowserRouter>
     </Provider>
   );

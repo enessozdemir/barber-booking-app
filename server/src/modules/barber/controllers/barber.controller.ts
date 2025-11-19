@@ -1,43 +1,124 @@
 import { Request, Response } from "express";
-import * as barberService from "../services/barber.service";
+import { getActiveBarbers, getBarberById, uploadBarberAvatar, deleteBarberAvatar } from "../services/barber.service";
+import { AppError } from "../../auth/utils/AppError";
 
-export async function getActiveBarbers(req: Request, res: Response) {
+export const getActiveBarbersController = async (req: Request, res: Response) => {
     try {
-        const barbers = await barberService.getActiveBarbers();
-        return res.json({ barbers });
-    } catch (err: any) {
-        const statusCode = err.statusCode || 500;
-        return res.status(statusCode).json({
-            error: {
-                code: err.code || 'INTERNAL_SERVER_ERROR',
-                message: err.message || 'Failed to fetch barbers'
-            }
-        });
+        const barbers = await getActiveBarbers();
+        res.status(200).json({ barbers });
+    } catch (error) {
+        if (error instanceof AppError) {
+            res.status(400).json({ code: error.code, message: error.message });
+        } else {
+            res.status(500).json({ code: "INTERNAL_ERROR", message: "Bir hata oluştu" });
+        }
     }
-}
+};
 
-export async function getBarberById(req: Request, res: Response) {
+export const getBarberByIdController = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
-        const barber = await barberService.getBarberById(id);
+        const { barberId } = req.params;
 
-        if (!barber) {
-            return res.status(404).json({
-                error: {
-                    code: 'BARBER_NOT_FOUND',
-                    message: 'Barber not found'
-                }
+        if (!barberId) {
+            return res.status(400).json({
+                code: "MISSING_BARBER_ID",
+                message: "Berber ID gerekli"
             });
         }
 
-        return res.json({ barber });
-    } catch (err: any) {
-        const statusCode = err.statusCode || 500;
-        return res.status(statusCode).json({
-            error: {
-                code: err.code || 'INTERNAL_SERVER_ERROR',
-                message: err.message || 'Failed to fetch barber'
-            }
-        });
+        const barber = await getBarberById(barberId);
+
+        if (!barber) {
+            return res.status(404).json({
+                code: "BARBER_NOT_FOUND",
+                message: "Berber bulunamadı"
+            });
+        }
+
+        res.status(200).json({ barber });
+    } catch (error) {
+        if (error instanceof AppError) {
+            res.status(400).json({ code: error.code, message: error.message });
+        } else {
+            res.status(500).json({ code: "INTERNAL_ERROR", message: "Bir hata oluştu" });
+        }
     }
-}
+};
+
+export const uploadAvatarController = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                code: "UNAUTHORIZED",
+                message: "Oturum açmanız gerekli"
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                code: "NO_FILE",
+                message: "Dosya yüklenmedi"
+            });
+        }
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            return res.status(400).json({
+                code: "INVALID_FILE_TYPE",
+                message: "Sadece JPG, PNG ve WebP formatları desteklenir"
+            });
+        }
+
+        // Validate file size (5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (req.file.size > maxSize) {
+            return res.status(400).json({
+                code: "FILE_TOO_LARGE",
+                message: "Dosya boyutu 5MB'dan küçük olmalıdır"
+            });
+        }
+
+        const avatarUrl = await uploadBarberAvatar(userId, req.file);
+
+        res.status(200).json({
+            message: "Avatar başarıyla yüklendi",
+            avatarUrl
+        });
+    } catch (error) {
+        if (error instanceof AppError) {
+            res.status(400).json({ code: error.code, message: error.message });
+        } else {
+            console.error("Avatar upload error:", error);
+            res.status(500).json({ code: "INTERNAL_ERROR", message: "Avatar yüklenirken hata oluştu" });
+        }
+    }
+};
+
+export const deleteAvatarController = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                code: "UNAUTHORIZED",
+                message: "Oturum açmanız gerekli"
+            });
+        }
+
+        await deleteBarberAvatar(userId);
+
+        res.status(200).json({
+            message: "Avatar başarıyla silindi"
+        });
+    } catch (error) {
+        if (error instanceof AppError) {
+            res.status(400).json({ code: error.code, message: error.message });
+        } else {
+            console.error("Avatar delete error:", error);
+            res.status(500).json({ code: "INTERNAL_ERROR", message: "Avatar silinirken hata oluştu" });
+        }
+    }
+};

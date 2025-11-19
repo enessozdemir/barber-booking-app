@@ -181,3 +181,39 @@ export async function resetPassword(req: Request, res: Response) {
     });
   }
 }
+
+export async function updateProfile(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Oturum açmanız gerekli'
+        }
+      });
+    }
+
+    const { full_name, email, phone } = req.body;
+
+    const updatedUser = await authService.updateUserProfile(userId, {
+      full_name,
+      email,
+      phone
+    });
+
+    return res.status(200).json({
+      user: updatedUser,
+      message: "Profil başarıyla güncellendi"
+    });
+  } catch (err: any) {
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      error: {
+        code: err.code || 'INTERNAL_SERVER_ERROR',
+        message: err.message || 'Profil güncellenemedi'
+      }
+    });
+  }
+}

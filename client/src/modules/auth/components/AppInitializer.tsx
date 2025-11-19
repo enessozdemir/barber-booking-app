@@ -1,11 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 
-type Props = {
-  children: React.ReactNode;
-};
-
-export default function AppInitializer({ children }: Props) {
+export default function AppInitializer() {
   const { tryRefreshToken } = useAuth();
 
   useEffect(() => {
@@ -13,5 +9,5 @@ export default function AppInitializer({ children }: Props) {
     tryRefreshToken();
   }, []);
 
-  return <>{children}</>;
+  return null;
 }

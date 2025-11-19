@@ -1,10 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-interface Barber {
+export interface Barber {
     id: string;
     active: boolean;
-    rating: number;
     created_at: string;
+    avatar_url?: string | null;
     users: {
         id: string;
         full_name: string;

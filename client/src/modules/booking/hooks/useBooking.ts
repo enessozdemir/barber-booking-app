@@ -15,7 +15,6 @@ import axios from 'axios';
 type Barber = {
     id: string;
     active: boolean;
-    rating: number;
     created_at: string;
     users: {
         id: string;

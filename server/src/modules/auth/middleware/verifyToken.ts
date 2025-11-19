@@ -1,6 +1,19 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/jwt.util";
 
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+      };
+    }
+  }
+}
+
 export interface RequestWithUser extends Request {
   user?: any;
 }
