@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import authRoutes from './modules/auth/routes/auth.routes';
+import barberRoutes from './modules/barber/routes/barber.routes';
+import bookingRoutes from './modules/booking/routes/booking.routes';
 
 dotenv.config();
 
@@ -12,6 +14,8 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use('/auth', authRoutes);
+app.use('/barbers', barberRoutes);
+app.use('/bookings', bookingRoutes);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 

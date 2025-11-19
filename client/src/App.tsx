@@ -7,7 +7,7 @@ import LoginPage from "./modules/auth/pages/LoginPage";
 import RegisterPage from "./modules/auth/pages/RegisterPage";
 import ResetPasswordPage from "./modules/auth/pages/ResetPasswordPage";
 import ForgotPasswordPage from "./modules/auth/pages/ForgotPasswordPage";
-import HomePage from "./modules/home/pages/HomePage";
+import RoleBasedHome from "./modules/home/components/RoleBasedHome";
 import ProtectedRoute from "./modules/auth/components/ProtectedRoute";
 import AppInitializer from "./modules/auth/components/AppInitializer";
 import setupAxios from "./config/setupAxios";
@@ -31,7 +31,7 @@ function App() {
                 path="/home"
                 element={
                   <ProtectedRoute>
-                    <HomePage />
+                    <RoleBasedHome />
                   </ProtectedRoute>
                 }
               />
