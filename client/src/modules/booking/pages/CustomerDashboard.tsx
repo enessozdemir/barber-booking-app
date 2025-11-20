@@ -32,12 +32,24 @@ export default function CustomerDashboard() {
     isOpen: boolean;
     bookingId: string | null;
   }>({ isOpen: false, bookingId: null });
+  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'cancelled'>('all');
 
   useEffect(() => {
     selectBarber(null);
     fetchBarbers();
     fetchMyBookings();
-  }, []);
+  }, [selectBarber, fetchBarbers, fetchMyBookings]);
+
+  const getFilteredBookings = () => {
+    if (filterStatus === 'all') return booking.myBookings;
+    
+    return booking.myBookings.filter(b => {
+      if (filterStatus === 'cancelled') {
+        return b.status === 'cancelled' || b.status === 'rejected';
+      }
+      return b.status === filterStatus;
+    });
+  };
 
   const handleBarberSelect = (barber: Barber) => {
     selectBarber(barber);
@@ -143,10 +155,10 @@ export default function CustomerDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:flex sm:justify-start gap-3 mb-6 sm:mb-8">
           <button
             onClick={() => setActiveTab('book')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer ${
+            className={`px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer text-sm sm:text-base sm:w-auto ${
               activeTab === 'book'
                 ? 'bg-secondary shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -156,7 +168,7 @@ export default function CustomerDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('my-bookings')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer ${
+            className={`px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all text-white cursor-pointer text-sm sm:text-base sm:w-auto ${
               activeTab === 'my-bookings'
                 ? 'bg-secondary shadow-lg'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -171,8 +183,8 @@ export default function CustomerDashboard() {
           <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'grid grid-cols-1 lg:grid-cols-12 gap-6' : ''}`}>
             {/* Barber List */}
             <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'lg:col-span-4' : 'w-full'}`}>
-              <div className="bg-navy rounded-xl p-6 shadow-xl">
-                <h2 className="text-2xl font-bold text-white mb-6">Berberler</h2>
+              <div className="bg-navy rounded-xl p-4 sm:p-6 shadow-xl">
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Berberler</h2>
                 {booking.loading ? (
                   <p className="text-gray-400">Yükleniyor...</p>
                 ) : booking.barbers.length === 0 ? (
@@ -183,15 +195,21 @@ export default function CustomerDashboard() {
                       <div
                         key={barber.id}
                         onClick={() => handleBarberSelect(barber)}
-                        className={`rounded-xl p-6 shadow-xl cursor-pointer hover:shadow-lg transition-all flex flex-col items-center text-center ${
+                        className={`rounded-xl p-4 sm:p-6 shadow-xl cursor-pointer hover:shadow-lg transition-all flex flex-row md:flex-col items-center justify-between md:justify-center text-left md:text-center gap-4 ${
                           booking.selectedBarber?.id === barber.id
                             ? 'bg-secondary text-white'
                             : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                         }`}
                       >
-                        {/* Avatar */}
+                        {/* Info (Left on mobile, Bottom on desktop) */}
+                        <div className="flex flex-col order-1 md:order-2">
+                          <h3 className="font-semibold text-base sm:text-lg mb-1 md:mb-2">{barber.users.full_name}</h3>
+                          <p className="text-xs sm:text-sm opacity-80">{formatPhoneNumber(barber.users.phone)}</p>
+                        </div>
+
+                        {/* Avatar (Right on mobile, Top on desktop) */}
                         <div 
-                          className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl mb-4 overflow-hidden ${
+                          className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white font-bold text-xl sm:text-2xl overflow-hidden order-2 md:order-1 ${
                             booking.selectedBarber?.id === barber.id ? 'bg-white/20' : 'bg-secondary'
                           }`}
                         >
@@ -205,12 +223,6 @@ export default function CustomerDashboard() {
                             getBarberInitials(barber.users.full_name)
                           )}
                         </div>
-                        
-                        {/* Name */}
-                        <h3 className="font-semibold text-lg mb-2">{barber.users.full_name}</h3>
-                        
-                        {/* Phone */}
-                        <p className="text-sm opacity-80">{formatPhoneNumber(barber.users.phone)}</p>
                       </div>
                     ))}
                   </div>
@@ -221,9 +233,9 @@ export default function CustomerDashboard() {
             {/* Booking Form */}
             {showBookingForm && booking.selectedBarber && (
               <div className="lg:col-span-8">
-                <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
+                <div className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-xl">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold text-white">
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">
                       Randevu Oluştur - {booking.selectedBarber.users.full_name}
                     </h2>
                     <button
@@ -258,22 +270,22 @@ export default function CustomerDashboard() {
                         {booking.availableSlots.length > 0 ? (
                 <div className="space-y-4">
                   {/* Person Count Selector */}
-                  <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600">
-                    <label className="block text-gray-300 mb-2 font-medium">Kişi Sayısı / Süre</label>
+                  <div className="bg-gray-700/50 p-3 sm:p-4 rounded-lg border border-gray-600">
+                    <label className="block text-gray-300 mb-1 sm:mb-2 font-medium text-sm sm:text-base">Kişi Sayısı / Süre</label>
                     <select
                       value={personCount}
                       onChange={(e) => {
                         setPersonCount(parseInt(e.target.value));
                         setSelectedTime(''); // Reset time when person count changes
                       }}
-                      className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-secondary outline-none border border-gray-600"
+                      className="w-full px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-800 text-white text-sm sm:text-base rounded-lg focus:ring-2 focus:ring-secondary outline-none border border-gray-600"
                     >
                       <option value="1">1 Kişi (30 dk)</option>
                       <option value="2">2 Kişi (1 saat)</option>
                       <option value="3">3 Kişi (1.5 saat)</option>
                       <option value="4">4 Kişi (2 saat)</option>
                     </select>
-                    <p className="text-xs text-gray-400 mt-2">
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">
                       * Seçtiğiniz kişi sayısına göre ardışık {personCount} slot otomatik rezerve edilecektir.
                     </p>
                   </div>
@@ -381,12 +393,12 @@ export default function CustomerDashboard() {
                     )}
 
                     <div>
-                      <label className="block text-gray-300 mb-2">Not (Opsiyonel)</label>
+                      <label className="block text-gray-300 mb-1 sm:mb-2 text-sm sm:text-base">Not (Opsiyonel)</label>
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        rows={3}
+                        className="w-full px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-700 text-white text-sm sm:text-base rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        rows={4}
                         placeholder="Özel bir isteğiniz varsa buraya yazabilirsiniz..."
                       />
                     </div>
@@ -421,19 +433,47 @@ export default function CustomerDashboard() {
 
         {/* My Bookings Tab */}
         {activeTab === 'my-bookings' && (
-          <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
-            <h2 className="text-2xl font-bold text-white mb-4">Randevularım</h2>
+          <div className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Randevularım</h2>
+              
+              {/* Filter Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'all', label: 'Tümü' },
+                  { id: 'pending', label: 'Beklemede' },
+                  { id: 'completed', label: 'Tamamlanmış' },
+                  { id: 'cancelled', label: 'İptal Edilen' },
+                ].map((filter) => (
+                  <button
+                    key={filter.id}
+                    onClick={() => setFilterStatus(filter.id as 'all' | 'completed' | 'pending' | 'cancelled')}
+                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                      filterStatus === filter.id
+                        ? 'bg-secondary'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {booking.loading ? (
               <p className="text-gray-400">Yükleniyor...</p>
-            ) : booking.myBookings.filter(b => b.status !== 'cancelled').length === 0 ? (
-              <p className="text-gray-400">Henüz randevunuz yok</p>
+            ) : booking.myBookings.length === 0 ? (
+              <p className="text-gray-400">Henüz randevunuz bulunmuyor.</p>
             ) : (
               <div className="space-y-4">
-                {booking.myBookings.filter(b => b.status !== 'cancelled').map((b) => (
-                  <div
-                    key={b.id}
-                    className="bg-gray-700 rounded-lg p-4 flex justify-between items-start"
-                  >
+                {getFilteredBookings().length === 0 ? (
+                  <p className="text-gray-400 text-center py-4">Bu kategoride randevu bulunamadı.</p>
+                ) : (
+                  getFilteredBookings().map((b) => (
+                    <div
+                      key={b.id}
+                      className="bg-gray-700/50 rounded-lg p-4 flex justify-between items-center border border-gray-700 hover:border-gray-600 transition-all"
+                    >
                     <div>
                       <h3 className="font-semibold text-white text-lg">
                         {b.barbers?.users.full_name}
@@ -467,7 +507,8 @@ export default function CustomerDashboard() {
                       </button>
                     )}
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </div>

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { setUser } from '../../auth/store/authSlice';
 import Header from '../../../shared/components/Header';
+import ConfirmModal from '../../../shared/components/ConfirmModal';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
@@ -22,12 +23,9 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState(user?.phone || '');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       // Check if user is a barber and get avatar
       const res = await axios.get(`/barbers/${user?.id}`);
@@ -41,7 +39,11 @@ export default function ProfilePage() {
       // Not a barber or no avatar
       setIsBarber(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -73,6 +75,9 @@ export default function ProfilePage() {
       });
 
       setAvatarUrl(res.data.avatarUrl);
+      if (user) {
+        dispatch(setUser({ ...user, avatar_url: res.data.avatarUrl }));
+      }
       toast.success('Profil fotoğrafı güncellendi');
     } catch (err) {
       toast.error(handleError(err));
@@ -82,13 +87,15 @@ export default function ProfilePage() {
   };
 
   const handleAvatarDelete = async () => {
-    if (!confirm('Profil fotoğrafını silmek istediğinizden emin misiniz?')) return;
-
     try {
       setUploadingAvatar(true);
       await axios.delete('/barbers/avatar');
       setAvatarUrl(null);
+      if (user) {
+        dispatch(setUser({ ...user, avatar_url: undefined }));
+      }
       toast.success('Profil fotoğrafı silindi');
+      setShowDeleteConfirm(false);
     } catch (err) {
       toast.error(handleError(err));
     } finally {
@@ -188,7 +195,7 @@ export default function ProfilePage() {
                   </label>
                   {avatarUrl && !uploadingAvatar && (
                     <button
-                      onClick={handleAvatarDelete}
+                      onClick={() => setShowDeleteConfirm(true)}
                       className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all"
                     >
                       Fotoğrafı Sil
@@ -287,6 +294,17 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Profil Fotoğrafını Sil"
+        message="Profil fotoğrafını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="Sil"
+        cancelText="Vazgeç"
+        type="danger"
+        onConfirm={handleAvatarDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </>
   );
 }

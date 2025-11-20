@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import {
@@ -29,7 +30,7 @@ export function useBooking() {
     const dispatch = useDispatch();
     const booking = useSelector((state: RootState) => state.booking);
 
-    const fetchBarbers = async () => {
+    const fetchBarbers = useCallback(async () => {
         try {
             dispatch(setLoading(true));
             const res = await axios.get('/barbers');
@@ -40,13 +41,13 @@ export function useBooking() {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
-    const selectBarber = (barber: Barber | null) => {
+    const selectBarber = useCallback((barber: Barber | null) => {
         dispatch(setSelectedBarber(barber));
-    };
+    }, [dispatch]);
 
-    const fetchAvailableSlots = async (barberId: string, date: string) => {
+    const fetchAvailableSlots = useCallback(async (barberId: string, date: string) => {
         try {
             const res = await axios.get('/bookings/available-slots', {
                 params: { barberId, date },
@@ -56,22 +57,20 @@ export function useBooking() {
             console.error('Failed to fetch slots:', error);
             dispatch(setError('Müsait saatler yüklenemedi'));
         }
-    };
+    }, [dispatch]);
 
-    const createBooking = async (barberId: string, date: string, startTime: string, note?: string, duration: number = 30) => {
+    const createBooking = useCallback(async (barberId: string, date: string, startTime: string, note?: string, duration: number = 30) => {
         dispatch(setLoading(true));
         try {
             const res = await axios.post('/bookings', { barberId, date, startTime, note, duration });
             dispatch(addBooking(res.data.booking));
             return res.data.booking;
-        } catch (error) {
-            throw error;
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
-    const fetchMyBookings = async () => {
+    const fetchMyBookings = useCallback(async () => {
         try {
             dispatch(setLoading(true));
             const res = await axios.get('/bookings/my-bookings');
@@ -82,16 +81,16 @@ export function useBooking() {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
-    const cancelBooking = async (bookingId: string) => {
+    const cancelBooking = useCallback(async (bookingId: string) => {
         const res = await axios.patch(`/bookings/${bookingId}/cancel`);
         return res.data;
-    };
+    }, []);
 
-    const clearState = () => {
+    const clearState = useCallback(() => {
         dispatch(clearBookingState());
-    };
+    }, [dispatch]);
 
     return {
         booking,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { setBarberBookings, setLoading } from '../store/bookingSlice';
@@ -6,6 +6,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import Header from '../../../shared/components/Header';
+import ConfirmModal from '../../../shared/components/ConfirmModal';
 
 interface Booking {
   id: string;
@@ -46,12 +47,12 @@ export default function BarberDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [price, setPrice] = useState('');
   const [status, setStatus] = useState('pending');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    bookingId: string | null;
+  }>({ isOpen: false, bookingId: null });
 
-  useEffect(() => {
-    fetchSchedule(selectedDate);
-  }, [selectedDate]);
-
-  const fetchSchedule = async (date: string) => {
+  const fetchSchedule = useCallback(async (date: string) => {
     try {
       dispatch(setLoading(true));
       const res = await axios.get('/bookings/barber/schedule', { params: { date } });
@@ -61,7 +62,11 @@ export default function BarberDashboard() {
     } finally {
       dispatch(setLoading(false));
     }
-  };
+  }, [dispatch, handleError]);
+
+  useEffect(() => {
+    fetchSchedule(selectedDate);
+  }, [fetchSchedule, selectedDate]);
 
   const handleSlotClick = (booking: Booking | undefined) => {
     if (!booking) return;
@@ -69,6 +74,21 @@ export default function BarberDashboard() {
     setPrice(booking.price?.toString() || '');
     setStatus(booking.status);
     setShowModal(true);
+  };
+
+  const handleDeleteBooking = async () => {
+    if (!confirmModal.bookingId) return;
+
+    try {
+      await axios.delete(`/bookings/${confirmModal.bookingId}`);
+      toast.success('Randevu silindi');
+      fetchSchedule(selectedDate);
+      setConfirmModal({ isOpen: false, bookingId: null });
+      setSelectedBooking(null);
+      setShowModal(false);
+    } catch (err) {
+      toast.error(handleError(err));
+    }
   };
 
   const handleUpdateBooking = async () => {
@@ -295,9 +315,33 @@ export default function BarberDashboard() {
                 Güncelle
               </button>
             </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setConfirmModal({ isOpen: true, bookingId: selectedBooking.id });
+                }}
+                className="w-full px-4 py-2.5 bg-red-900/50 text-red-200 border border-red-900/50 rounded-lg font-semibold hover:bg-red-900/70 transition-colors"
+              >
+                Randevuyu Sil
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title="Randevuyu Sil"
+        message="Bu randevuyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="Sil"
+        cancelText="Vazgeç"
+        type="danger"
+        onConfirm={handleDeleteBooking}
+        onCancel={() => setConfirmModal({ isOpen: false, bookingId: null })}
+      />
     </>
   );
 }
