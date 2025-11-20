@@ -126,24 +126,38 @@ export async function createBooking(
         throw new AppError(BOOKING_ERRORS.INSUFFICIENT_CONSECUTIVE_SLOTS, "Not enough time slots available", 400);
     }
 
-    // Check if customer already has a booking on this date
+    // Check for overlapping bookings for the same customer
     const { data: existingCustomerBookings, error: bookingError } = await supabase
         .from("bookings")
-        .select("id, start_time, barbers!inner(users!inner(full_name))")
+        .select("id, start_time, end_time, barbers!inner(users!inner(full_name))")
         .eq("customer_id", userId)
         .eq("date", date)
-        .in("status", ["pending", "completed"]);
+        .in("status", ["pending", "confirmed"]); // Only check active bookings
 
     if (bookingError) throw bookingError;
 
+    // Calculate new booking end time for overlap check
+    const newBookingStart = new Date(`2000-01-01T${startTime}`);
+    const newBookingEnd = new Date(newBookingStart);
+    newBookingEnd.setMinutes(newBookingEnd.getMinutes() + duration);
+
     if (existingCustomerBookings && existingCustomerBookings.length > 0) {
-        const existingBooking = existingCustomerBookings[0];
-        const barberName = (existingBooking.barbers as any)?.users?.full_name || "bir berber";
-        throw new AppError(
-            BOOKING_ERRORS.CUSTOMER_ALREADY_BOOKED,
-            `Bu tarihte zaten ${barberName} ile ${existingBooking.start_time.substring(0, 5)} saatinde randevunuz var`,
-            400
-        );
+        const overlappingBooking = existingCustomerBookings.find(booking => {
+            const existingStart = new Date(`2000-01-01T${booking.start_time}`);
+            const existingEnd = new Date(`2000-01-01T${booking.end_time}`);
+
+            // Check for overlap: (StartA < EndB) and (EndA > StartB)
+            return newBookingStart < existingEnd && newBookingEnd > existingStart;
+        });
+
+        if (overlappingBooking) {
+            const barberName = (overlappingBooking.barbers as any)?.users?.full_name || "bir berber";
+            throw new AppError(
+                BOOKING_ERRORS.CUSTOMER_ALREADY_BOOKED,
+                `Bu saat aralığında ${barberName} ile zaten randevunuz var (${overlappingBooking.start_time.substring(0, 5)} - ${overlappingBooking.end_time.substring(0, 5)})`,
+                400
+            );
+        }
     }
 
     // Calculate end time

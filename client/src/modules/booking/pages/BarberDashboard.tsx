@@ -127,7 +127,25 @@ export default function BarberDashboard() {
             {loading ? (
               <p className="text-gray-400">Yükleniyor...</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="booking-grid">
+                <style>{`
+                  .booking-grid {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.75rem; /* gap-3 */
+                    --cols: 2;
+                  }
+                  @media (min-width: 640px) { .booking-grid { --cols: 3; } }
+                  @media (min-width: 768px) { .booking-grid { --cols: 4; } }
+                  @media (min-width: 1024px) { .booking-grid { --cols: 6; } }
+                  
+                  .booking-slot {
+                    flex-grow: 1;
+                    /* Formula: ((100% + gap) * span) / cols - gap */
+                    width: calc( ((100% + 0.75rem) * var(--span)) / var(--cols) - 0.75rem );
+                    max-width: 100%;
+                  }
+                `}</style>
                 {(() => {
                   const renderedSlots = [];
                   for (let i = 0; i < allSlots.length; i++) {
@@ -156,8 +174,8 @@ export default function BarberDashboard() {
                         <button
                           key={slot}
                           onClick={() => handleSlotClick(booking)}
-                          className={`p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center ${colorClass}`}
-                          style={{ gridColumn: `span ${span}` }}
+                          className={`booking-slot p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center ${colorClass}`}
+                          style={{ '--span': span } as React.CSSProperties}
                         >
                           <div className="text-white font-semibold text-sm">
                             {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
@@ -171,16 +189,7 @@ export default function BarberDashboard() {
                       // Skip the next slots that are covered by this booking
                       i += span - 1;
                     } else {
-                      // Check if this slot is "inside" another booking (shouldn't happen with skipping, but safety check)
-                      // Actually, we just render an empty slot if no booking starts here
-                      // But we must ensure we don't render slots that are covered by a booking starting earlier.
-                      // The skipping logic (i += span - 1) handles this.
-                      // However, we need to check if this slot is covered by a booking that started BEFORE the grid start (e.g. 07:30)
-                      // Our grid starts at 08:00. If a booking is 07:30-09:00, we need to handle it.
-                      // But our generateTimeSlots starts at 08:00 fixed.
-                      // Assuming no bookings start before 08:00 for now.
-                      
-                      // Also check if it's inside a booking to be safe (in case of overlap errors)
+                      // Check if this slot is "inside" another booking
                       const isInsideBooking = bookings.some(b => {
                          const s = new Date(`2000-01-01T${b.start_time}`);
                          const e = new Date(`2000-01-01T${b.end_time}`);
@@ -197,7 +206,8 @@ export default function BarberDashboard() {
                             <button
                               key={slot}
                               disabled
-                              className="p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center bg-gray-700 cursor-not-allowed opacity-50"
+                              className="booking-slot p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center bg-gray-700 cursor-not-allowed opacity-50"
+                              style={{ '--span': 1 } as React.CSSProperties}
                             >
                               <div className="text-white font-semibold text-sm">
                                 {slot} - {endTimeStr}

@@ -34,6 +34,7 @@ export default function CustomerDashboard() {
   }>({ isOpen: false, bookingId: null });
 
   useEffect(() => {
+    selectBarber(null);
     fetchBarbers();
     fetchMyBookings();
   }, []);
@@ -271,14 +272,30 @@ export default function CustomerDashboard() {
                       <option value="2">2 Kişi (1 saat)</option>
                       <option value="3">3 Kişi (1.5 saat)</option>
                       <option value="4">4 Kişi (2 saat)</option>
-                      <option value="5">5 Kişi (2.5 saat)</option>
                     </select>
                     <p className="text-xs text-gray-400 mt-2">
                       * Seçtiğiniz kişi sayısına göre ardışık {personCount} slot otomatik rezerve edilecektir.
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                  <div className="booking-grid pr-2">
+                    <style>{`
+                      .booking-grid {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 0.5rem; /* gap-2 */
+                        --cols: 2;
+                      }
+                      @media (min-width: 640px) { .booking-grid { --cols: 3; } }
+                      @media (min-width: 768px) { .booking-grid { --cols: 4; } }
+                      
+                      .booking-slot {
+                        flex-grow: 1;
+                        /* Formula: ((100% + gap) * span) / cols - gap */
+                        width: calc( ((100% + 0.5rem) * var(--span)) / var(--cols) - 0.5rem );
+                        max-width: 100%;
+                      }
+                    `}</style>
                     {booking.availableSlots.map((slot, index) => {
                       // If slot is booked and not the start, don't render it (it's covered by the previous merged slot)
                       if (!slot.available && slot.isStart === false) {
@@ -286,7 +303,9 @@ export default function CustomerDashboard() {
                       }
 
                       const endTime = new Date(`2000-01-01T${slot.time}`);
-                      // If booked, use span to calculate end time. If available, use personCount * 30
+                      // If booked, use span to calculate end time. If available, use personCount * 30 (for display logic only if we wanted to show potential end time, but usually we show single slot time for available)
+                      // Actually for available slots we usually show just the slot time or slot+30. 
+                      // Let's keep it simple: Booked = span * 30. Available = 30.
                       const durationMinutes = !slot.available && slot.span ? slot.span * 30 : 30;
                       endTime.setMinutes(endTime.getMinutes() + durationMinutes);
                       const endTimeStr = endTime.toTimeString().slice(0, 5);
@@ -306,16 +325,13 @@ export default function CustomerDashboard() {
                       // Determine color based on status
                       let colorClass = '';
                       
-                      // Selection Logic: Check if this slot is within the selected range
+                      // Selection Logic
                       let isSelected = false;
                       if (selectedTime && slot.available) {
                          const selectedStart = new Date(`2000-01-01T${selectedTime}`);
                          const selectedEnd = new Date(selectedStart);
                          selectedEnd.setMinutes(selectedEnd.getMinutes() + (personCount * 30));
-                         
                          const currentSlotTime = new Date(`2000-01-01T${slot.time}`);
-                         
-                         // Highlight if it's the selected start time OR if it falls within the selected range
                          if (currentSlotTime >= selectedStart && currentSlotTime < selectedEnd) {
                              isSelected = true;
                          }
@@ -326,15 +342,18 @@ export default function CustomerDashboard() {
                       } else if (slot.available && isConsecutiveAvailable) {
                         colorClass = 'bg-gray-700 hover:bg-gray-600';
                       } else if (slot.available && !isConsecutiveAvailable) {
-                        colorClass = 'bg-gray-700/50 cursor-not-allowed opacity-50'; // Available but not enough consecutive slots
+                        colorClass = 'bg-gray-700/50 cursor-not-allowed opacity-50';
                       } else {
-                        // Slot is booked - check status
                         if (slot.status === 'completed') {
                           colorClass = 'bg-green-900/50 border border-green-700/50 cursor-not-allowed';
                         } else {
                           colorClass = 'bg-red-900/50 border border-red-700/50 cursor-not-allowed';
                         }
                       }
+
+                      // Span Logic
+                      // Booked slots use their span. Available slots are always 1.
+                      const span = !slot.available && slot.span ? slot.span : 1;
 
                       return (
                         <button
@@ -346,8 +365,8 @@ export default function CustomerDashboard() {
                             }
                           }}
                           disabled={!slot.available || (slot.available && !isConsecutiveAvailable)}
-                          className={`px-2 sm:px-4 py-2 text-white rounded-lg transition-all flex flex-col justify-center items-center text-center h-12 ${colorClass}`}
-                          style={!slot.available && slot.span ? { gridColumn: `span ${slot.span}` } : {}}
+                          className={`booking-slot px-2 sm:px-4 py-2 text-white rounded-lg transition-all flex flex-col justify-center items-center text-center h-12 ${colorClass}`}
+                          style={{ '--span': span } as React.CSSProperties}
                         >
                           <span className="font-semibold text-xs sm:text-sm truncate w-full">{slot.time} - {endTimeStr}</span>
                         </button>
@@ -420,7 +439,7 @@ export default function CustomerDashboard() {
                         {b.barbers?.users.full_name}
                       </h3>
                       <p className="text-gray-300">
-                        {new Date(b.date).toLocaleDateString('tr-TR')} - {b.start_time} - {b.end_time}
+                        {new Date(b.date).toLocaleDateString('tr-TR')} - {b.start_time.substring(0, 5)} - {b.end_time.substring(0, 5)}
                       </p>
                       <p className="text-sm text-gray-400 mt-1">
                         Durum: <span className={`font-semibold ${
