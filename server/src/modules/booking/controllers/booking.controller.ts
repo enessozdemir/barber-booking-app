@@ -38,7 +38,7 @@ export async function getAvailableSlots(req: Request, res: Response) {
 export async function createBooking(req: Request, res: Response) {
     try {
         const userId = (req as any).user.id;
-        const { barberId, date, startTime, notes } = req.body;
+        const { barberId, date, startTime, notes, duration } = req.body;
 
         if (!barberId || !date || !startTime) {
             return res.status(400).json({
@@ -54,7 +54,8 @@ export async function createBooking(req: Request, res: Response) {
             barberId,
             date,
             startTime,
-            notes
+            notes,
+            duration
         );
 
         return res.status(201).json({ booking, message: 'Booking created successfully' });

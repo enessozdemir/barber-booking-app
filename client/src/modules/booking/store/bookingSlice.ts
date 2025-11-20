@@ -17,6 +17,8 @@ interface TimeSlot {
     time: string;
     available: boolean;
     status?: string | null;
+    span?: number;
+    isStart?: boolean;
 }
 
 interface Booking {
@@ -88,6 +90,9 @@ const bookingSlice = createSlice({
         setError: (state, action: PayloadAction<string | null>) => {
             state.error = action.payload;
         },
+        addBooking: (state, action: PayloadAction<Booking>) => {
+            state.myBookings.unshift(action.payload);
+        },
         clearBookingState: (state) => {
             state.selectedBarber = null;
             state.availableSlots = [];
@@ -104,6 +109,7 @@ export const {
     setBarberBookings,
     setLoading,
     setError,
+    addBooking,
     clearBookingState,
 } = bookingSlice.actions;
 

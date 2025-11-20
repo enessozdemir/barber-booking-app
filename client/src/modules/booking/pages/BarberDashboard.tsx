@@ -64,7 +64,12 @@ export default function BarberDashboard() {
   };
 
   const findBookingForSlot = (time: string): Booking | undefined => {
-    return bookings.find(b => b.start_time.substring(0, 5) === time);
+    return bookings.find(b => {
+      const slotTime = new Date(`2000-01-01T${time}`);
+      const startTime = new Date(`2000-01-01T${b.start_time}`);
+      const endTime = new Date(`2000-01-01T${b.end_time}`);
+      return slotTime >= startTime && slotTime < endTime;
+    });
   };
 
   const handleSlotClick = (booking: Booking | undefined) => {
@@ -132,42 +137,87 @@ export default function BarberDashboard() {
               <p className="text-gray-400">Yükleniyor...</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {allSlots.map((slot) => {
-                  const booking = findBookingForSlot(slot);
-                  const endTime = new Date(`2000-01-01T${slot}`);
-                  endTime.setMinutes(endTime.getMinutes() + 30);
-                  const endTimeStr = endTime.toTimeString().slice(0, 5);
+                {(() => {
+                  const renderedSlots = [];
+                  for (let i = 0; i < allSlots.length; i++) {
+                    const slot = allSlots[i];
+                    // Find if a booking STARTS at this slot
+                    const booking = bookings.find(b => b.start_time.substring(0, 5) === slot);
+                    
+                    if (booking) {
+                      // Calculate span
+                      const start = new Date(`2000-01-01T${booking.start_time}`);
+                      const end = new Date(`2000-01-01T${booking.end_time}`);
+                      const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+                      const span = Math.ceil(durationMinutes / 30);
+                      
+                      // Determine color based on status
+                      let colorClass = 'bg-gray-700 cursor-not-allowed opacity-50';
+                      if (booking.status === 'cancelled') {
+                        colorClass = 'bg-red-900/50 border border-red-700/50 cursor-pointer';
+                      } else if (booking.status === 'pending') {
+                        colorClass = 'bg-yellow-900/50 border border-yellow-700/50 cursor-pointer';
+                      } else if (booking.status === 'completed') {
+                        colorClass = 'bg-green-900/50 border border-green-700/50 cursor-pointer';
+                      }
 
-                  // Determine color based on status
-                  let colorClass = 'bg-gray-700 cursor-not-allowed opacity-50';
-                  if (booking) {
-                    if (booking.status === 'cancelled') {
-                      colorClass = 'bg-red-900/50 border border-red-700/50 cursor-pointer';
-                    } else if (booking.status === 'pending') {
-                      colorClass = 'bg-yellow-900/50 border border-yellow-700/50 cursor-pointer';
-                    } else if (booking.status === 'completed') {
-                      colorClass = 'bg-green-900/50 border border-green-700/50 cursor-pointer';
+                      renderedSlots.push(
+                        <button
+                          key={slot}
+                          onClick={() => handleSlotClick(booking)}
+                          className={`p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center ${colorClass}`}
+                          style={{ gridColumn: `span ${span}` }}
+                        >
+                          <div className="text-white font-semibold text-sm">
+                            {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
+                          </div>
+                          <div className="text-xs text-gray-200 truncate w-full">
+                            {booking.customer?.full_name || 'Müşteri'}
+                          </div>
+                        </button>
+                      );
+                      
+                      // Skip the next slots that are covered by this booking
+                      i += span - 1;
+                    } else {
+                      // Check if this slot is "inside" another booking (shouldn't happen with skipping, but safety check)
+                      // Actually, we just render an empty slot if no booking starts here
+                      // But we must ensure we don't render slots that are covered by a booking starting earlier.
+                      // The skipping logic (i += span - 1) handles this.
+                      // However, we need to check if this slot is covered by a booking that started BEFORE the grid start (e.g. 07:30)
+                      // Our grid starts at 08:00. If a booking is 07:30-09:00, we need to handle it.
+                      // But our generateTimeSlots starts at 08:00 fixed.
+                      // Assuming no bookings start before 08:00 for now.
+                      
+                      // Also check if it's inside a booking to be safe (in case of overlap errors)
+                      const isInsideBooking = bookings.some(b => {
+                         const s = new Date(`2000-01-01T${b.start_time}`);
+                         const e = new Date(`2000-01-01T${b.end_time}`);
+                         const c = new Date(`2000-01-01T${slot}`);
+                         return c > s && c < e;
+                      });
+
+                      if (!isInsideBooking) {
+                          const endTime = new Date(`2000-01-01T${slot}`);
+                          endTime.setMinutes(endTime.getMinutes() + 30);
+                          const endTimeStr = endTime.toTimeString().slice(0, 5);
+
+                          renderedSlots.push(
+                            <button
+                              key={slot}
+                              disabled
+                              className="p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center bg-gray-700 cursor-not-allowed opacity-50"
+                            >
+                              <div className="text-white font-semibold text-sm">
+                                {slot} - {endTimeStr}
+                              </div>
+                            </button>
+                          );
+                      }
                     }
                   }
-
-                  return (
-                    <button
-                      key={slot}
-                      onClick={() => handleSlotClick(booking)}
-                      disabled={!booking}
-                      className={`p-3 rounded-lg transition-all text-left h-20 flex flex-col justify-between ${colorClass}`}
-                    >
-                      <div className="text-white font-semibold text-sm">
-                        {slot} - {endTimeStr}
-                      </div>
-                      {booking && (
-                        <div className="text-xs text-gray-200 truncate">
-                          {booking.customer?.full_name || 'Müşteri'}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                  return renderedSlots;
+                })()}
               </div>
             )}
           </div>

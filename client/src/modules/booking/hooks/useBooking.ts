@@ -8,6 +8,7 @@ import {
     setLoading,
     setError,
     clearBookingState,
+    addBooking,
 } from '../store/bookingSlice';
 import axios from 'axios';
 
@@ -57,19 +58,17 @@ export function useBooking() {
         }
     };
 
-    const createBooking = async (
-        barberId: string,
-        date: string,
-        startTime: string,
-        notes?: string
-    ) => {
-        const res = await axios.post('/bookings', {
-            barberId,
-            date,
-            startTime,
-            notes,
-        });
-        return res.data;
+    const createBooking = async (barberId: string, date: string, startTime: string, note?: string, duration: number = 30) => {
+        dispatch(setLoading(true));
+        try {
+            const res = await axios.post('/bookings', { barberId, date, startTime, note, duration });
+            dispatch(addBooking(res.data.booking));
+            return res.data.booking;
+        } catch (error) {
+            throw error;
+        } finally {
+            dispatch(setLoading(false));
+        }
     };
 
     const fetchMyBookings = async () => {

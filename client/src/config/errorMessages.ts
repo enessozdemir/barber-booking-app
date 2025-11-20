@@ -34,6 +34,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
     BOOKING_IN_PAST: 'Geçmiş tarihe randevu oluşturamazsınız',
     UNAUTHORIZED_ACCESS: 'Bu işlem için yetkiniz yok',
     INVALID_AMOUNT: 'Geçersiz tutar',
+    INSUFFICIENT_CONSECUTIVE_SLOTS: 'Seçilen saat aralığında yeterli ardışık boş slot yok',
 };
 
 export function getErrorMessage(errorCode?: string): string {

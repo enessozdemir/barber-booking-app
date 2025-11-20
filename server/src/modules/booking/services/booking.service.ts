@@ -19,12 +19,12 @@ function generateTimeSlots(): string[] {
     return slots;
 }
 
-function calculateEndTime(startTime: string): string {
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const totalMinutes = hours * 60 + minutes + SLOT_DURATION_MINUTES;
-    const endHours = Math.floor(totalMinutes / 60);
-    const endMinutes = totalMinutes % 60;
-    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+function calculateEndTime(startTime: string, duration: number = 30): string {
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    date.setMinutes(date.getMinutes() + duration);
+    return date.toTimeString().slice(0, 5);
 }
 
 // Get available slots for a barber on a specific date
@@ -51,16 +51,46 @@ export async function getAvailableSlots(barberId: string, date: string) {
     // Generate all possible slots
     const allSlots = generateTimeSlots();
 
-    // Create a map of booked slots with their status
-    const bookedSlotsMap = new Map(
-        bookings?.map(b => [b.start_time.substring(0, 5), b.status]) || []
-    );
+    // Create a map of booked slots with their status and span info
+    const bookedSlotsMap = new Map();
 
-    const availableSlots = allSlots.map(slot => ({
-        time: slot,
-        available: !bookedSlotsMap.has(slot),
-        status: bookedSlotsMap.get(slot) || null
-    }));
+    bookings?.forEach(b => {
+        const start = new Date(`2000-01-01T${b.start_time}`);
+        const end = new Date(`2000-01-01T${b.end_time}`);
+        const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+        const span = Math.ceil(durationMinutes / 30);
+
+        // Mark the start slot
+        const startTimeStr = start.toTimeString().slice(0, 5);
+        bookedSlotsMap.set(startTimeStr, {
+            status: b.status,
+            span: span,
+            isStart: true
+        });
+
+        // Mark subsequent slots as covered
+        start.setMinutes(start.getMinutes() + 30);
+        while (start < end) {
+            const timeStr = start.toTimeString().slice(0, 5);
+            bookedSlotsMap.set(timeStr, {
+                status: b.status,
+                span: 0,
+                isStart: false
+            });
+            start.setMinutes(start.getMinutes() + 30);
+        }
+    });
+
+    const availableSlots = allSlots.map(slot => {
+        const bookingInfo = bookedSlotsMap.get(slot);
+        return {
+            time: slot,
+            available: !bookingInfo,
+            status: bookingInfo?.status || null,
+            span: bookingInfo?.span || 1,
+            isStart: bookingInfo?.isStart !== false // Default to true for available slots
+        };
+    });
 
     return availableSlots;
 }
@@ -71,7 +101,8 @@ export async function createBooking(
     barberId: string,
     date: string,
     startTime: string,
-    note?: string
+    note?: string,
+    duration: number = 30
 ) {
     // Validate date
     const selectedDate = new Date(date);
@@ -86,6 +117,13 @@ export async function createBooking(
     const allSlots = generateTimeSlots();
     if (!allSlots.includes(startTime)) {
         throw new AppError(BOOKING_ERRORS.INVALID_TIME_SLOT, "Invalid time slot", 400);
+    }
+
+    // Validate consecutive slots
+    const slotsNeeded = duration / 30;
+    const startIndex = allSlots.indexOf(startTime);
+    if (startIndex === -1 || startIndex + slotsNeeded > allSlots.length) {
+        throw new AppError(BOOKING_ERRORS.INSUFFICIENT_CONSECUTIVE_SLOTS, "Not enough time slots available", 400);
     }
 
     // Check if customer already has a booking on this date
@@ -108,21 +146,32 @@ export async function createBooking(
         );
     }
 
-    // Check if slot is available (excluding cancelled bookings)
-    const { data: existingBooking } = await supabase
+    // Calculate end time
+    const endTime = calculateEndTime(startTime, duration);
+
+    // Check for overlap with existing bookings
+    const { data: overlappingBookings } = await supabase
         .from("bookings")
-        .select("id, status")
+        .select("id")
         .eq("barber_id", barberId)
         .eq("date", date)
-        .eq("start_time", startTime)
         .in("status", ["pending", "completed"])
-        .maybeSingle();
+        .lt("start_time", endTime)
+        .gt("end_time", startTime);
 
-    if (existingBooking) {
-        throw new AppError(BOOKING_ERRORS.SLOT_NOT_AVAILABLE, "This slot is already booked", 400);
+    if (overlappingBookings && overlappingBookings.length > 0) {
+        throw new AppError(BOOKING_ERRORS.SLOT_NOT_AVAILABLE, "One or more slots are already booked", 400);
     }
 
-    // Delete any cancelled bookings for this slot to avoid unique constraint violation
+    // Delete any cancelled bookings that overlap with this new booking
+    // This is to ensure we don't hit unique constraints if we had a cancelled booking in this slot
+    // Note: Unique constraint is usually on (barber_id, date, start_time). 
+    // Since we are creating a single booking record, we just need to make sure there isn't a cancelled one 
+    // with the EXACT SAME start_time. 
+    // But to be safe and clean, let's remove any cancelled overlaps.
+
+    // Actually, simpler approach for now: just delete cancelled booking with same start_time
+    // because that's likely the unique key.
     await supabase
         .from("bookings")
         .delete()
@@ -130,9 +179,6 @@ export async function createBooking(
         .eq("date", date)
         .eq("start_time", startTime)
         .eq("status", "cancelled");
-
-    // Calculate end time
-    const endTime = calculateEndTime(startTime);
 
     // Create booking
     const { data, error } = await supabase

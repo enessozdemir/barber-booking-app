@@ -25,6 +25,7 @@ export default function CustomerDashboard() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [personCount, setPersonCount] = useState(1);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'book' | 'my-bookings'>('book');
   const [confirmModal, setConfirmModal] = useState<{
@@ -60,11 +61,14 @@ export default function CustomerDashboard() {
       return;
     }
 
+    const duration = personCount * 30; // Each person = 30 minutes
+
     try {
-      await createBooking(booking.selectedBarber.id, selectedDate, selectedTime, notes);
+      await createBooking(booking.selectedBarber.id, selectedDate, selectedTime, notes, duration);
       toast.success('Randevu başarıyla oluşturuldu!');
       setShowBookingForm(false);
       selectBarber(null);
+      setPersonCount(1);
       fetchMyBookings();
     } catch (err) {
       toast.error(handleError(err));
@@ -250,44 +254,110 @@ export default function CustomerDashboard() {
                     {selectedDate && (
                       <div>
                         <label className="block text-gray-300 mb-2">Saat</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
-                          {booking.availableSlots.map((slot) => {
-                            const endTime = new Date(`2000-01-01T${slot.time}`);
-                            endTime.setMinutes(endTime.getMinutes() + 30);
-                            const endTimeStr = endTime.toTimeString().slice(0, 5);
-                            
-                            // Determine color based on status
-                            let colorClass = '';
-                            if (selectedTime === slot.time) {
-                              colorClass = 'bg-secondary';
-                            } else if (slot.available) {
-                              colorClass = 'bg-gray-700 hover:bg-gray-600';
-                            } else {
-                              // Slot is booked - check status
-                              if (slot.status === 'completed') {
-                                colorClass = 'bg-green-900/50 border border-green-700/50';
-                              } else {
-                                colorClass = 'bg-red-900/50 border border-red-700/50';
-                              }
-                            }
+                        {booking.availableSlots.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Person Count Selector */}
+                  <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600">
+                    <label className="block text-gray-300 mb-2 font-medium">Kişi Sayısı / Süre</label>
+                    <select
+                      value={personCount}
+                      onChange={(e) => {
+                        setPersonCount(parseInt(e.target.value));
+                        setSelectedTime(''); // Reset time when person count changes
+                      }}
+                      className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-secondary outline-none border border-gray-600"
+                    >
+                      <option value="1">1 Kişi (30 dk)</option>
+                      <option value="2">2 Kişi (1 saat)</option>
+                      <option value="3">3 Kişi (1.5 saat)</option>
+                      <option value="4">4 Kişi (2 saat)</option>
+                      <option value="5">5 Kişi (2.5 saat)</option>
+                    </select>
+                    <p className="text-xs text-gray-400 mt-2">
+                      * Seçtiğiniz kişi sayısına göre ardışık {personCount} slot otomatik rezerve edilecektir.
+                    </p>
+                  </div>
 
-                            return (
-                              <button
-                                key={slot.time}
-                                type="button"
-                                onClick={() => {
-                                  if (slot.available) {
-                                    setSelectedTime(slot.time);
-                                  }
-                                }}
-                                disabled={!slot.available}
-                                className={`px-4 py-2 text-white rounded-lg disabled:cursor-not-allowed cursor-pointer ${colorClass}`}
-                              >
-                                {slot.time} - {endTimeStr}
-                              </button>
-                            );
-                          })}
-                        </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                    {booking.availableSlots.map((slot, index) => {
+                      // If slot is booked and not the start, don't render it (it's covered by the previous merged slot)
+                      if (!slot.available && slot.isStart === false) {
+                        return null;
+                      }
+
+                      const endTime = new Date(`2000-01-01T${slot.time}`);
+                      // If booked, use span to calculate end time. If available, use personCount * 30
+                      const durationMinutes = !slot.available && slot.span ? slot.span * 30 : 30;
+                      endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+                      const endTimeStr = endTime.toTimeString().slice(0, 5);
+                      
+                      // Check if consecutive slots are available (only for available slots)
+                      let isConsecutiveAvailable = true;
+                      if (slot.available && personCount > 1) {
+                        for (let i = 0; i < personCount; i++) {
+                          const nextSlot = booking.availableSlots[index + i];
+                          if (!nextSlot || !nextSlot.available) {
+                            isConsecutiveAvailable = false;
+                            break;
+                          }
+                        }
+                      }
+
+                      // Determine color based on status
+                      let colorClass = '';
+                      
+                      // Selection Logic: Check if this slot is within the selected range
+                      let isSelected = false;
+                      if (selectedTime && slot.available) {
+                         const selectedStart = new Date(`2000-01-01T${selectedTime}`);
+                         const selectedEnd = new Date(selectedStart);
+                         selectedEnd.setMinutes(selectedEnd.getMinutes() + (personCount * 30));
+                         
+                         const currentSlotTime = new Date(`2000-01-01T${slot.time}`);
+                         
+                         // Highlight if it's the selected start time OR if it falls within the selected range
+                         if (currentSlotTime >= selectedStart && currentSlotTime < selectedEnd) {
+                             isSelected = true;
+                         }
+                      }
+
+                      if (isSelected) {
+                        colorClass = 'bg-secondary';
+                      } else if (slot.available && isConsecutiveAvailable) {
+                        colorClass = 'bg-gray-700 hover:bg-gray-600';
+                      } else if (slot.available && !isConsecutiveAvailable) {
+                        colorClass = 'bg-gray-700/50 cursor-not-allowed opacity-50'; // Available but not enough consecutive slots
+                      } else {
+                        // Slot is booked - check status
+                        if (slot.status === 'completed') {
+                          colorClass = 'bg-green-900/50 border border-green-700/50 cursor-not-allowed';
+                        } else {
+                          colorClass = 'bg-red-900/50 border border-red-700/50 cursor-not-allowed';
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={slot.time}
+                          type="button"
+                          onClick={() => {
+                            if (slot.available && isConsecutiveAvailable) {
+                              setSelectedTime(slot.time);
+                            }
+                          }}
+                          disabled={!slot.available || (slot.available && !isConsecutiveAvailable)}
+                          className={`px-2 sm:px-4 py-2 text-white rounded-lg transition-all flex flex-col justify-center items-center text-center h-12 ${colorClass}`}
+                          style={!slot.available && slot.span ? { gridColumn: `span ${slot.span}` } : {}}
+                        >
+                          <span className="font-semibold text-xs sm:text-sm truncate w-full">{slot.time} - {endTimeStr}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400">Bu tarihte uygun saat bulunamadı.</p>
+              )}
                       </div>
                     )}
 
