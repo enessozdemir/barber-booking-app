@@ -63,15 +63,6 @@ export default function BarberDashboard() {
     }
   };
 
-  const findBookingForSlot = (time: string): Booking | undefined => {
-    return bookings.find(b => {
-      const slotTime = new Date(`2000-01-01T${time}`);
-      const startTime = new Date(`2000-01-01T${b.start_time}`);
-      const endTime = new Date(`2000-01-01T${b.end_time}`);
-      return slotTime >= startTime && slotTime < endTime;
-    });
-  };
-
   const handleSlotClick = (booking: Booking | undefined) => {
     if (!booking) return;
     setSelectedBooking(booking);
