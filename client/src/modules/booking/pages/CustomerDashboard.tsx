@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import { toast } from 'react-toastify';
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import Header from '../../../shared/components/Header';
+import ConfirmModal from '../../../shared/components/ConfirmModal';
 
 interface Barber {
   id: string;
@@ -26,6 +27,10 @@ export default function CustomerDashboard() {
   const [notes, setNotes] = useState('');
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'book' | 'my-bookings'>('book');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    bookingId: string | null;
+  }>({ isOpen: false, bookingId: null });
 
   useEffect(() => {
     fetchBarbers();
@@ -67,18 +72,25 @@ export default function CustomerDashboard() {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm('Randevuyu iptal etmek istediğinizden emin misiniz?')) return;
+    setConfirmModal({ isOpen: true, bookingId });
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!confirmModal.bookingId) return;
     
     try {
-      await cancelBooking(bookingId);
+      await cancelBooking(confirmModal.bookingId);
       toast.success('Randevu iptal edildi');
-      fetchMyBookings();
+      await fetchMyBookings();
+      
       // Refresh available slots if a barber and date are selected
       if (booking.selectedBarber && selectedDate) {
-        fetchAvailableSlots(booking.selectedBarber.id, selectedDate);
+        await fetchAvailableSlots(booking.selectedBarber.id, selectedDate);
       }
     } catch (err) {
       toast.error(handleError(err));
+    } finally {
+      setConfirmModal({ isOpen: false, bookingId: null });
     }
   };
 
@@ -240,13 +252,25 @@ export default function CustomerDashboard() {
                         <label className="block text-gray-300 mb-2">Saat</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
                           {booking.availableSlots.map((slot) => {
-                            // Calculate end time for display
-                            const [hours, minutes] = slot.time.split(':').map(Number);
-                            const totalMinutes = hours * 60 + minutes + 30;
-                            const endHours = Math.floor(totalMinutes / 60);
-                            const endMinutes = totalMinutes % 60;
-                            const endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+                            const endTime = new Date(`2000-01-01T${slot.time}`);
+                            endTime.setMinutes(endTime.getMinutes() + 30);
+                            const endTimeStr = endTime.toTimeString().slice(0, 5);
                             
+                            // Determine color based on status
+                            let colorClass = '';
+                            if (selectedTime === slot.time) {
+                              colorClass = 'bg-secondary';
+                            } else if (slot.available) {
+                              colorClass = 'bg-gray-700 hover:bg-gray-600';
+                            } else {
+                              // Slot is booked - check status
+                              if (slot.status === 'completed') {
+                                colorClass = 'bg-green-900/50 border border-green-700/50';
+                              } else {
+                                colorClass = 'bg-red-900/50 border border-red-700/50';
+                              }
+                            }
+
                             return (
                               <button
                                 key={slot.time}
@@ -257,13 +281,9 @@ export default function CustomerDashboard() {
                                   }
                                 }}
                                 disabled={!slot.available}
-                                className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-                                  selectedTime === slot.time 
-                                    ? 'bg-secondary' 
-                                    : 'bg-gray-700 hover:bg-gray-600'
-                                }`}
+                                className={`px-4 py-2 text-white rounded-lg disabled:cursor-not-allowed cursor-pointer ${colorClass}`}
                               >
-                                {slot.time} - {endTime}
+                                {slot.time} - {endTimeStr}
                               </button>
                             );
                           })}
@@ -316,11 +336,11 @@ export default function CustomerDashboard() {
             <h2 className="text-2xl font-bold text-white mb-4">Randevularım</h2>
             {booking.loading ? (
               <p className="text-gray-400">Yükleniyor...</p>
-            ) : booking.myBookings.length === 0 ? (
+            ) : booking.myBookings.filter(b => b.status !== 'cancelled').length === 0 ? (
               <p className="text-gray-400">Henüz randevunuz yok</p>
             ) : (
               <div className="space-y-4">
-                {booking.myBookings.map((b) => (
+                {booking.myBookings.filter(b => b.status !== 'cancelled').map((b) => (
                   <div
                     key={b.id}
                     className="bg-gray-700 rounded-lg p-4 flex justify-between items-start"
@@ -365,6 +385,18 @@ export default function CustomerDashboard() {
         )}
       </div>
     </div>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title="Randevu İptali"
+        message="Randevuyu iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+        confirmText="İptal Et"
+        cancelText="Vazgeç"
+        type="danger"
+        onConfirm={confirmCancelBooking}
+        onCancel={() => setConfirmModal({ isOpen: false, bookingId: null })}
+      />
     </>
   );
 }

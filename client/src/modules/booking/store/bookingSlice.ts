@@ -16,6 +16,7 @@ export interface Barber {
 interface TimeSlot {
     time: string;
     available: boolean;
+    status?: string | null;
 }
 
 interface Booking {

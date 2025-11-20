@@ -24,6 +24,16 @@ interface Booking {
   };
 }
 
+// Generate time slots (8:00 - 20:00, 30min intervals)
+const generateTimeSlots = (): string[] => {
+  const slots: string[] = [];
+  for (let hour = 8; hour < 20; hour++) {
+    slots.push(`${hour.toString().padStart(2, '0')}:00`);
+    slots.push(`${hour.toString().padStart(2, '0')}:30`);
+  }
+  return slots;
+};
+
 export default function BarberDashboard() {
   const dispatch = useDispatch();
   const { handleError } = useErrorHandler();
@@ -34,6 +44,8 @@ export default function BarberDashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [price, setPrice] = useState('');
+  const [status, setStatus] = useState('pending');
 
   useEffect(() => {
     fetchSchedule(selectedDate);
@@ -51,59 +63,55 @@ export default function BarberDashboard() {
     }
   };
 
-  const updateStatus = async (bookingId: string, status: string) => {
-    try {
-      await axios.patch(`/bookings/${bookingId}/status`, { status });
-      toast.success('Durum güncellendi');
-      fetchSchedule(selectedDate);
-      setShowModal(false);
-    } catch (err) {
-      toast.error(handleError(err));
-    }
+  const findBookingForSlot = (time: string): Booking | undefined => {
+    return bookings.find(b => b.start_time.substring(0, 5) === time);
   };
 
-  const updatePrice = async (bookingId: string, price: number) => {
-    try {
-      await axios.patch(`/bookings/${bookingId}/price`, { price });
-      toast.success('Fiyat güncellendi');
-      fetchSchedule(selectedDate);
-    } catch (err) {
-      toast.error(handleError(err));
-    }
-  };
-
-  const deleteBooking = async (bookingId: string) => {
-    if (!confirm('Randevuyu silmek istediğinizden emin misiniz?')) return;
-    
-    try {
-      await axios.delete(`/bookings/${bookingId}`);
-      toast.success('Randevu silindi');
-      fetchSchedule(selectedDate);
-      setShowModal(false);
-    } catch (err) {
-      toast.error(handleError(err));
-    }
-  };
-
-  const openBookingModal = (booking: Booking) => {
+  const handleSlotClick = (booking: Booking | undefined) => {
+    if (!booking) return;
     setSelectedBooking(booking);
+    setPrice(booking.price?.toString() || '');
+    setStatus(booking.status);
     setShowModal(true);
   };
+
+  const handleUpdateBooking = async () => {
+    if (!selectedBooking) return;
+
+    try {
+      // Update status
+      await axios.patch(`/bookings/${selectedBooking.id}/status`, { status });
+      
+      // Update price if provided
+      if (price && parseFloat(price) > 0) {
+        await axios.patch(`/bookings/${selectedBooking.id}/price`, { price: parseFloat(price) });
+      }
+
+      toast.success('Randevu güncellendi');
+      fetchSchedule(selectedDate);
+      setShowModal(false);
+    } catch (err) {
+      toast.error(handleError(err));
+    }
+  };
+
+  const allSlots = generateTimeSlots();
 
   return (
     <>
       <Header />
       <div className="min-h-screen p-6 pt-24 bg-dark">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-            {user?.full_name}
-          </h1>
-          <p className="text-sm sm:text-base text-gray-400">Günlük randevularınızı yönetin</p>
-        </div>
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+              {user?.full_name}
+            </h1>
+            <p className="text-sm sm:text-base text-gray-400">Günlük randevularınızı yönetin</p>
+          </div>
 
-        <div className="mb-6">
+          {/* Date Picker */}
+          <div className="mb-6">
             <label className="block text-gray-300 mb-2">Tarih Seç</label>
             <input
               type="date"
@@ -114,129 +122,131 @@ export default function BarberDashboard() {
             />
           </div>
 
-        <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
-          <h2 className="text-2xl font-bold text-white mb-4">
-            Günlük Çizelge - {new Date(selectedDate).toLocaleDateString('tr-TR')}
-          </h2>
-          
-          {loading ? (
-            <p className="text-gray-400">Yükleniyor...</p>
-          ) : bookings.length === 0 ? (
-            <p className="text-gray-400">Bu tarihte randevu yok</p>
-          ) : (
-            <div className="space-y-3">
-              {bookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  onClick={() => openBookingModal(booking)}
-                  className="bg-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-600 transition-all"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-white text-lg">
-                        {booking.customer?.full_name}
-                      </h3>
-                      <p className="text-gray-300">{booking.start_time} - {booking.end_time}</p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Durum: <span className={`font-semibold ${
-                          booking.status === 'confirmed' ? 'text-green-400' :
-                          booking.status === 'pending' ? 'text-yellow-400' :
-                          booking.status === 'completed' ? 'text-blue-400' :
-                          'text-red-400'
-                        }`}>
-                          {booking.status === 'pending' ? 'Beklemede' :
-                           booking.status === 'confirmed' ? 'Onaylandı' :
-                           booking.status === 'completed' ? 'Tamamlandı' :
-                           'İptal Edildi'}
-                        </span>
-                      </p>
-                      {booking.price && (
-                        <p className="text-sm text-green-400 mt-1">Fiyat: ₺{booking.price}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Time Slot Grid */}
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Günlük Çizelge - {new Date(selectedDate).toLocaleDateString('tr-TR')}
+            </h2>
 
-        {showModal && selectedBooking && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl">
-              <h2 className="text-2xl font-bold text-white mb-4">Randevu Detayları</h2>
-              
-              <div className="space-y-3 mb-6">
-                <div>
-                  <p className="text-gray-400 text-sm">Müşteri</p>
-                  <p className="text-white font-semibold">{selectedBooking.customer?.full_name}</p>
-                  <p className="text-gray-300 text-sm">{selectedBooking.customer?.phone}</p>
-                </div>
-                
-                <div>
-                  <p className="text-gray-400 text-sm">Tarih & Saat</p>
-                  <p className="text-white font-semibold">
-                    {new Date(selectedBooking.date).toLocaleDateString('tr-TR')} - {selectedBooking.start_time} - {selectedBooking.end_time}
-                  </p>
-                </div>
-                
-                {selectedBooking.note && (
-                  <div>
-                    <p className="text-gray-400 text-sm">Not</p>
-                    <p className="text-white">{selectedBooking.note}</p>
-                  </div>
-                )}
-                
-                <div>
-                  <p className="text-gray-400 text-sm mb-2">Durum</p>
-                  <select
-                    value={selectedBooking.status}
-                    onChange={(e) => updateStatus(selectedBooking.id, e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    <option value="pending">Beklemede</option>
-                    <option value="confirmed">Onaylandı</option>
-                    <option value="completed">Tamamlandı</option>
-                    <option value="cancelled">İptal Edildi</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <p className="text-gray-400 text-sm mb-2">Fiyat (₺)</p>
-                  <input
-                    type="number"
-                    defaultValue={selectedBooking.price || ''}
-                    onBlur={(e) => {
-                      const price = parseFloat(e.target.value);
-                      if (price && price !== selectedBooking.price) {
-                        updatePrice(selectedBooking.id, price);
-                      }
-                    }}
-                    className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Fiyat girin"
-                  />
-                </div>
+            {loading ? (
+              <p className="text-gray-400">Yükleniyor...</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {allSlots.map((slot) => {
+                  const booking = findBookingForSlot(slot);
+                  const endTime = new Date(`2000-01-01T${slot}`);
+                  endTime.setMinutes(endTime.getMinutes() + 30);
+                  const endTimeStr = endTime.toTimeString().slice(0, 5);
+
+                  // Determine color based on status
+                  let colorClass = 'bg-gray-700 cursor-not-allowed opacity-50';
+                  if (booking) {
+                    if (booking.status === 'cancelled') {
+                      colorClass = 'bg-red-900/50 border border-red-700/50 cursor-pointer';
+                    } else if (booking.status === 'pending') {
+                      colorClass = 'bg-yellow-900/50 border border-yellow-700/50 cursor-pointer';
+                    } else if (booking.status === 'completed') {
+                      colorClass = 'bg-green-900/50 border border-green-700/50 cursor-pointer';
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={slot}
+                      onClick={() => handleSlotClick(booking)}
+                      disabled={!booking}
+                      className={`p-3 rounded-lg transition-all text-left h-20 flex flex-col justify-between ${colorClass}`}
+                    >
+                      <div className="text-white font-semibold text-sm">
+                        {slot} - {endTimeStr}
+                      </div>
+                      {booking && (
+                        <div className="text-xs text-gray-200 truncate">
+                          {booking.customer?.full_name || 'Müşteri'}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => deleteBooking(selectedBooking.id)}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all cursor-pointer"
-                >
-                  Sil
-                </button>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all cursor-pointer"
-                >
-                  Kapat
-                </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-4">Randevu Detayları</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-gray-400 text-sm">Müşteri</p>
+                <p className="text-white font-semibold">{selectedBooking.customer?.full_name}</p>
               </div>
+
+              <div>
+                <p className="text-gray-400 text-sm">Telefon</p>
+                <p className="text-white">{selectedBooking.customer?.phone}</p>
+              </div>
+
+              <div>
+                <p className="text-gray-400 text-sm">Saat</p>
+                <p className="text-white">
+                  {selectedBooking.start_time.substring(0, 5)} - {selectedBooking.end_time.substring(0, 5)}
+                </p>
+              </div>
+
+              {selectedBooking.note && (
+                <div>
+                  <p className="text-gray-400 text-sm">Not</p>
+                  <p className="text-white">{selectedBooking.note}</p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-gray-300 mb-2">Durum</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="pending">Beklemede</option>
+                  <option value="completed">Tamamlandı</option>
+                  <option value="cancelled">İptal Edildi</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-300 mb-2">Fiyat (₺)</label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="Fiyat girin"
+                  className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleUpdateBooking}
+                className="flex-1 px-4 py-2.5 bg-secondary text-white rounded-lg font-semibold hover:opacity-90 transition-colors"
+              >
+                Güncelle
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
     </>
   );
 }

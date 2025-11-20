@@ -38,13 +38,12 @@ export async function getAvailableSlots(barberId: string, date: string) {
         throw new AppError(BOOKING_ERRORS.BOOKING_IN_PAST, "Cannot book in the past", 400);
     }
 
-    // Get all booked slots for this barber on this date (excluding cancelled)
+    // Get all booked slots for this barber on this date (only pending and completed)
     const { data: bookings, error } = await supabase
         .from("bookings")
-        .select("start_time, end_time")
+        .select("start_time, end_time, status")
         .eq("barber_id", barberId)
         .eq("date", date)
-        .neq("status", "cancelled")
         .in("status", ["pending", "completed"]);
 
     if (error) throw error;
@@ -52,12 +51,15 @@ export async function getAvailableSlots(barberId: string, date: string) {
     // Generate all possible slots
     const allSlots = generateTimeSlots();
 
-    // Mark booked slots
-    const bookedSlots = new Set(bookings?.map(b => b.start_time) || []);
+    // Create a map of booked slots with their status
+    const bookedSlotsMap = new Map(
+        bookings?.map(b => [b.start_time.substring(0, 5), b.status]) || []
+    );
 
     const availableSlots = allSlots.map(slot => ({
         time: slot,
-        available: !bookedSlots.has(slot)
+        available: !bookedSlotsMap.has(slot),
+        status: bookedSlotsMap.get(slot) || null
     }));
 
     return availableSlots;
@@ -86,20 +88,48 @@ export async function createBooking(
         throw new AppError(BOOKING_ERRORS.INVALID_TIME_SLOT, "Invalid time slot", 400);
     }
 
+    // Check if customer already has a booking on this date
+    const { data: existingCustomerBookings, error: bookingError } = await supabase
+        .from("bookings")
+        .select("id, start_time, barbers!inner(users!inner(full_name))")
+        .eq("customer_id", userId)
+        .eq("date", date)
+        .in("status", ["pending", "completed"]);
+
+    if (bookingError) throw bookingError;
+
+    if (existingCustomerBookings && existingCustomerBookings.length > 0) {
+        const existingBooking = existingCustomerBookings[0];
+        const barberName = (existingBooking.barbers as any)?.users?.full_name || "bir berber";
+        throw new AppError(
+            BOOKING_ERRORS.CUSTOMER_ALREADY_BOOKED,
+            `Bu tarihte zaten ${barberName} ile ${existingBooking.start_time.substring(0, 5)} saatinde randevunuz var`,
+            400
+        );
+    }
+
     // Check if slot is available (excluding cancelled bookings)
     const { data: existingBooking } = await supabase
         .from("bookings")
-        .select("id")
+        .select("id, status")
         .eq("barber_id", barberId)
         .eq("date", date)
         .eq("start_time", startTime)
-        .neq("status", "cancelled")
         .in("status", ["pending", "completed"])
         .maybeSingle();
 
     if (existingBooking) {
         throw new AppError(BOOKING_ERRORS.SLOT_NOT_AVAILABLE, "This slot is already booked", 400);
     }
+
+    // Delete any cancelled bookings for this slot to avoid unique constraint violation
+    await supabase
+        .from("bookings")
+        .delete()
+        .eq("barber_id", barberId)
+        .eq("date", date)
+        .eq("start_time", startTime)
+        .eq("status", "cancelled");
 
     // Calculate end time
     const endTime = calculateEndTime(startTime);

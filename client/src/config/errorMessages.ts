@@ -7,6 +7,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
     MISSING_FIELDS: 'Lütfen tüm alanları doldurun',
     PASSWORDS_DO_NOT_MATCH: 'Şifreler eşleşmiyor',
     PHONE_ALREADY_REGISTERED: 'Bu telefon numarası zaten kayıtlı',
+    CUSTOMER_ALREADY_BOOKED: 'Aynı gün için birden fazla randevu oluşturamazsınız',
     EMAIL_ALREADY_REGISTERED: 'Bu e-posta adresi zaten kayıtlı',
 
     // Refresh Token
