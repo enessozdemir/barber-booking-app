@@ -47,7 +47,6 @@ export function useBooking() {
 
     const fetchAvailableSlots = async (barberId: string, date: string) => {
         try {
-            dispatch(setLoading(true));
             const res = await axios.get('/bookings/available-slots', {
                 params: { barberId, date },
             });
@@ -55,8 +54,6 @@ export function useBooking() {
         } catch (error) {
             console.error('Failed to fetch slots:', error);
             dispatch(setError('Müsait saatler yüklenemedi'));
-        } finally {
-            dispatch(setLoading(false));
         }
     };
 

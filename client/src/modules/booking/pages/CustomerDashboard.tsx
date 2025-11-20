@@ -42,6 +42,7 @@ export default function CustomerDashboard() {
 
   const handleDateChange = (date: string) => {
     setSelectedDate(date);
+    setSelectedTime(''); // Reset time when date changes
     if (booking.selectedBarber && date) {
       fetchAvailableSlots(booking.selectedBarber.id, date);
     }
@@ -250,10 +251,16 @@ export default function CustomerDashboard() {
                               <button
                                 key={slot.time}
                                 type="button"
-                                onClick={() => slot.available && setSelectedTime(slot.time)}
+                                onClick={() => {
+                                  if (slot.available) {
+                                    setSelectedTime(slot.time);
+                                  }
+                                }}
                                 disabled={!slot.available}
-                                className={`px-4 py-2 text-white rounded-lg hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-                                  selectedTime === slot.time ? 'bg-secondary' : 'bg-gray-700'
+                                className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                                  selectedTime === slot.time 
+                                    ? 'bg-secondary' 
+                                    : 'bg-gray-700 hover:bg-gray-600'
                                 }`}
                               >
                                 {slot.time} - {endTime}

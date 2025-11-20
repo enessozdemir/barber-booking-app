@@ -71,7 +71,7 @@ export default function Header() {
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled ? 'py-3' : 'py-4'
+        isScrolled ? 'py-1' : 'py-4'
       }`}
       style={{
         backgroundColor: isScrolled ? 'rgba(10, 10, 10, 0.7)' : 'var(--color-dark)',
@@ -80,14 +80,12 @@ export default function Header() {
       }}
     >
       <div 
-        className={`mx-auto transition-all duration-500 ${
-          isScrolled ? 'max-w-7xl' : 'max-w-7xl'
-        }`}
+        className="mx-auto transition-all duration-500 max-w-7xl"
       >
         <div
           className={`flex justify-between items-center transition-all duration-500 ${
             isScrolled
-              ? 'bg-black/20 backdrop-blur-[12px] rounded-[1.5rem] p-2 sm:p-3 mx-3 sm:mx-6 mt-2 sm:mt-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10'
+              ? 'bg-black/20 backdrop-blur-md rounded-4xl p-2 sm:p-3 mx-3 sm:mx-6 mt-2 sm:mt-4 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10'
               : 'bg-transparent border border-transparent px-6 xl:px-0'
           }`}
         >
