@@ -22,7 +22,8 @@ export default function CustomerDashboard() {
   const { booking, fetchBarbers, selectBarber, fetchAvailableSlots, createBooking, fetchMyBookings, cancelBooking } = useBooking();
   const { state: authState } = useAuth();
   const { handleError } = useErrorHandler();
-  const [selectedDate, setSelectedDate] = useState('');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
   const [personCount, setPersonCount] = useState(1);
@@ -41,20 +42,35 @@ export default function CustomerDashboard() {
   }, [selectBarber, fetchBarbers, fetchMyBookings]);
 
   const getFilteredBookings = () => {
-    if (filterStatus === 'all') return booking.myBookings;
-    
-    return booking.myBookings.filter(b => {
-      if (filterStatus === 'cancelled') {
-        return b.status === 'cancelled' || b.status === 'rejected';
-      }
-      return b.status === filterStatus;
+    // Start with a shallow copy so we don't mutate redux state
+    let list = booking.myBookings ? booking.myBookings.slice() : [];
+
+    if (filterStatus !== 'all') {
+      list = list.filter(b => {
+        if (filterStatus === 'cancelled') {
+          return b.status === 'cancelled' || b.status === 'rejected';
+        }
+        return b.status === filterStatus;
+      });
+    }
+
+    // Sort by most-recent action/creation (latest first)
+    list.sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return tb - ta;
     });
+
+    return list;
   };
 
   const handleBarberSelect = (barber: Barber) => {
     selectBarber(barber);
     setShowBookingForm(true);
-    setSelectedDate('');
+    // default to today so users see current availability immediately
+    setSelectedDate(todayStr);
+    // fetch availability for today immediately
+    fetchAvailableSlots(barber.id, todayStr);
     setSelectedTime('');
     setNotes('');
   };
@@ -272,20 +288,22 @@ export default function CustomerDashboard() {
                   {/* Person Count Selector */}
                   <div className="bg-gray-700/50 p-3 sm:p-4 rounded-lg border border-gray-600">
                     <label className="block text-gray-300 mb-1 sm:mb-2 font-medium text-sm sm:text-base">Kişi Sayısı / Süre</label>
-                    <select
-                      value={personCount}
-                      onChange={(e) => {
-                        setPersonCount(parseInt(e.target.value));
-                        setSelectedTime(''); // Reset time when person count changes
-                      }}
-                      className="w-full px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-800 text-white text-sm sm:text-base rounded-lg focus:ring-2 focus:ring-secondary outline-none border border-gray-600"
-                    >
-                      <option value="1">1 Kişi (30 dk)</option>
-                      <option value="2">2 Kişi (1 saat)</option>
-                      <option value="3">3 Kişi (1.5 saat)</option>
-                      <option value="4">4 Kişi (2 saat)</option>
-                    </select>
-                    <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">
+                    <div className="flex gap-2 mt-2">
+                      {[1, 2, 3, 4].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => {
+                            setPersonCount(n);
+                            setSelectedTime('');
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-semibold transition-all text-sm sm:text-base ${personCount === n ? 'bg-secondary text-white' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                        >
+                          <span className="hidden sm:inline">{n} Kişi</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-400 mt-3">
                       * Seçtiğiniz kişi sayısına göre ardışık {personCount} slot otomatik rezerve edilecektir.
                     </p>
                   </div>
@@ -407,9 +425,7 @@ export default function CustomerDashboard() {
                       <button
                         type="submit"
                         disabled={!selectedDate || !selectedTime}
-                        className={`w-full py-3 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-                          selectedDate && selectedTime ? 'bg-secondary' : 'bg-gray-700'
-                        }`}
+                        className={`w-full py-3 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${selectedDate && selectedTime ? 'bg-secondary' : 'bg-gray-700'}`}
                       >
                         Randevu Oluştur
                       </button>

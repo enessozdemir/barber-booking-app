@@ -1,7 +1,8 @@
 import { getErrorMessage } from '../../config/errorMessages';
+import { useCallback } from 'react';
 
 export const useErrorHandler = () => {
-  const handleError = (err: unknown): string => {
+  const handleError = useCallback((err: unknown): string => {
     // Try to extract error code from response
     if (typeof err === 'object' && err !== null) {
       const maybe = err as Record<string, unknown>;
@@ -22,7 +23,7 @@ export const useErrorHandler = () => {
 
     // Fallback to generic error message
     return getErrorMessage();
-  };
+  }, []);
 
   return { handleError };
 };
