@@ -1,7 +1,6 @@
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { supabase } from "../../../config/supabase";
 import {
   signAccessToken,
   signRefreshToken,
@@ -10,9 +9,12 @@ import {
 import * as tokenService from "./token.service";
 import { AppError } from "../utils/AppError";
 import { AUTH_ERRORS } from "../constants/errorCodes";
+import authRepository from "../repositories/auth.repository";
+import logger from "../../../utils/logger";
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET as string;
+
 export async function registerUser({
   phone,
   email,
@@ -28,44 +30,27 @@ export async function registerUser({
   confirm_password: string;
   role?: string;
 }) {
-  try {
-    if (!phone || !email || !full_name || !password || !confirm_password) {
-      throw new AppError(AUTH_ERRORS.MISSING_FIELDS, "Missing fields", 400);
-    }
+  if (!phone || !email || !full_name || !password || !confirm_password) {
+    throw new AppError(AUTH_ERRORS.MISSING_FIELDS, "Missing fields", 400);
+  }
 
-    if (password !== confirm_password) {
-      throw new AppError(AUTH_ERRORS.PASSWORDS_DO_NOT_MATCH, "Passwords do not match", 400);
-    }
+  if (password !== confirm_password) {
+    throw new AppError(AUTH_ERRORS.PASSWORDS_DO_NOT_MATCH, "Passwords do not match", 400);
+  }
 
-    const { data: existingPhone } = await supabase
-      .from("users")
-      .select("id")
-      .eq("phone", phone)
-      .maybeSingle();
-    if (existingPhone) {
-      throw new AppError(AUTH_ERRORS.PHONE_ALREADY_REGISTERED, "Phone already registered", 400);
-    }
+  const existingPhone = await authRepository.findUserByPhone(phone);
+  if (existingPhone) {
+    throw new AppError(AUTH_ERRORS.PHONE_ALREADY_REGISTERED, "Phone already registered", 400);
+  }
 
-    const { data: existingEmail } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    if (existingEmail) {
-      throw new AppError(AUTH_ERRORS.EMAIL_ALREADY_REGISTERED, "Email already registered", 400);
-    }
-  } catch (err) {
-    throw err;
+  const existingEmail = await authRepository.findUserByEmail(email);
+  if (existingEmail) {
+    throw new AppError(AUTH_ERRORS.EMAIL_ALREADY_REGISTERED, "Email already registered", 400);
   }
 
   const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-  const { data, error } = await supabase
-    .from("users")
-    .insert({ phone, email, password: hashed, full_name, role })
-    .select()
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const newUser = await authRepository.createUser({ phone, email, password: hashed, full_name, role });
+  return newUser;
 }
 
 export async function loginUser({
@@ -75,38 +60,30 @@ export async function loginUser({
   phone: string;
   password: string;
 }) {
-  try {
-    if (!phone || !password) {
-      throw new AppError(AUTH_ERRORS.MISSING_PHONE_OR_PASSWORD, "Missing phone or password", 400);
-    }
-
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("phone", phone)
-      .maybeSingle();
-    if (error || !user) {
-      throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
-    }
-
-    const match = await bcrypt.compare(password, user.password as string);
-    if (!match) {
-      throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
-    }
-
-    const payload = { id: user.id, role: user.role };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
-
-    //save refresh token to db
-    await tokenService.saveRefreshToken(refreshToken, user.id);
-
-    const safeUser = { ...user } as any;
-    delete safeUser.password;
-    return { user: safeUser, accessToken, refreshToken };
-  } catch (error) {
-    throw error;
+  if (!phone || !password) {
+    throw new AppError(AUTH_ERRORS.MISSING_PHONE_OR_PASSWORD, "Missing phone or password", 400);
   }
+
+  const user = await authRepository.findUserByPhone(phone);
+  if (!user) {
+    throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
+  }
+
+  const match = await bcrypt.compare(password, user.password as string);
+  if (!match) {
+    throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
+  }
+
+  const payload = { id: user.id, role: user.role };
+  const accessToken = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+
+  //save refresh token to db
+  await tokenService.saveRefreshToken(refreshToken, user.id);
+
+  const safeUser = { ...user } as any;
+  delete safeUser.password;
+  return { user: safeUser, accessToken, refreshToken };
 }
 
 export async function refreshAccessToken(refreshToken: string) {
@@ -124,13 +101,9 @@ export async function refreshAccessToken(refreshToken: string) {
   }
 
   // fetch user data to return to client
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", payload.id)
-    .maybeSingle();
+  const user = await authRepository.findUserById(payload.id);
 
-  if (error || !user) throw new Error("User not found");
+  if (!user) throw new Error("User not found");
 
   // rotation: issue new refresh token and revoke old one
   const newRefresh = signRefreshToken({ id: payload.id, role: payload.role });
@@ -152,14 +125,10 @@ export async function logout(refreshToken: string) {
 }
 
 export async function forgotPassword(phone: string, email: string) {
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("phone", phone)
-    .eq("email", email)
-    .maybeSingle();
+  const user = await authRepository.findUserByPhone(phone);
 
-  if (error || !user) throw new Error("User not found");
+  // Check if email matches
+  if (!user || user.email !== email) throw new Error("User not found");
 
   const secret = JWT_SECRET + user.password;
   const token = jwt.sign({ id: user.id, email: user.email }, secret, {
@@ -168,7 +137,7 @@ export async function forgotPassword(phone: string, email: string) {
 
   const link = `${process.env.CLIENT_URL}/reset-password/${user.id}/${token}`;
 
-  console.log("Sending reset email with:", process.env.GM_EMAIL);
+  logger.info(`Sending reset email with: ${process.env.GM_EMAIL}`);
 
   const gmEmail = process.env.GM_EMAIL;
   const gmPass = process.env.GM_PASSWORD;
@@ -186,24 +155,20 @@ export async function forgotPassword(phone: string, email: string) {
         text: `Şifreni sıfırlamak için bu linke tıkla: ${link}`,
       });
     } catch (err) {
-      console.error("Failed to send reset email", err);
+      logger.error(`Failed to send reset email: ${err}`);
       // still return true to avoid leaking user existence; in dev you can check server logs for the link
     }
   } else {
     // Development fallback: log the link so developer can copy it
-    console.info("[reset link]", link);
+    logger.info(`[reset link] ${link}`);
   }
 
   return true;
 }
 
 export async function verifyResetToken(id: string, token: string) {
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error || !user) {
+  const user = await authRepository.findUserById(id);
+  if (!user) {
     throw new AppError(AUTH_ERRORS.USER_NOT_FOUND, "User not found", 404);
   }
 
@@ -221,12 +186,8 @@ export async function resetPassword(
   token: string,
   newPassword: string
 ) {
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error || !user) {
+  const user = await authRepository.findUserById(id);
+  if (!user) {
     throw new AppError(AUTH_ERRORS.USER_NOT_FOUND, "User not found", 404);
   }
 
@@ -235,11 +196,7 @@ export async function resetPassword(
   try {
     jwt.verify(token, secret);
     const hashed = await bcrypt.hash(newPassword, 10);
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ password: hashed })
-      .eq("id", id);
-    if (updateError) throw updateError;
+    await authRepository.updateUserPassword(id, hashed);
     return true;
   } catch {
     throw new AppError(AUTH_ERRORS.INVALID_OR_EXPIRED_TOKEN, "Invalid or expired token", 400);
@@ -254,12 +211,7 @@ export async function updateUserProfile(userId: string, data: { full_name?: stri
 
   // Check if email is being updated and if it's already taken
   if (data.email) {
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", data.email)
-      .neq("id", userId)
-      .maybeSingle();
+    const existingUser = await authRepository.findUserByEmailExcludingId(data.email, userId);
 
     if (existingUser) {
       throw new AppError("EMAIL_EXISTS", "Bu e-posta adresi zaten kullanılıyor", 400);
@@ -268,12 +220,7 @@ export async function updateUserProfile(userId: string, data: { full_name?: stri
 
   // Check if phone is being updated and if it's already taken
   if (data.phone) {
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("phone", data.phone)
-      .neq("id", userId)
-      .maybeSingle();
+    const existingUser = await authRepository.findUserByPhoneExcludingId(data.phone, userId);
 
     if (existingUser) {
       throw new AppError("PHONE_EXISTS", "Bu telefon numarası zaten kullanılıyor", 400);
@@ -286,16 +233,7 @@ export async function updateUserProfile(userId: string, data: { full_name?: stri
   if (data.email) updateData.email = data.email;
   if (data.phone) updateData.phone = data.phone;
 
-  const { data: updatedUser, error } = await supabase
-    .from("users")
-    .update(updateData)
-    .eq("id", userId)
-    .select("id, phone, email, full_name, role")
-    .single();
-
-  if (error) {
-    throw new AppError("UPDATE_FAILED", "Profil güncellenemedi", 400);
-  }
+  const updatedUser = await authRepository.updateUser(userId, updateData);
 
   return updatedUser;
 }

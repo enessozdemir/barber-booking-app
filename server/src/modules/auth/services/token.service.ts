@@ -1,15 +1,5 @@
 import crypto from "crypto";
-import { supabase } from "../../../config/supabase";
-
-type RefreshTokenRow = {
-  id: string;
-  user_id: string;
-  token: string; // stores SHA-256 hash of the refresh token
-  expires_at: string | null;
-  revoked: boolean;
-  created_at: string;
-  revoked_at?: string | null;
-};
+import tokenRepository from "../repositories/token.repository";
 
 function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -24,71 +14,26 @@ export async function saveRefreshToken(
   const ttl =
     expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await supabase
-    .from("refresh_tokens")
-    .insert({
-      user_id: userId,
-      token: tokenHash,
-      expires_at: ttl,
-      revoked: false,
-    })
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  return tokenRepository.createRefreshToken({
+    user_id: userId,
+    token: tokenHash,
+    expires_at: ttl,
+    revoked: false,
+  });
 }
 
 export async function findValidRefreshToken(rawToken: string) {
   const tokenHash = hashToken(rawToken);
+  const data = await tokenRepository.findRefreshToken(tokenHash);
 
-  const { data, error } = await supabase
-    .from("refresh_tokens")
-    .select("*")
-    .eq("token", tokenHash)
-    .eq("revoked", false)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
   if (!data) return null;
-
   if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
   return data;
 }
 
 export async function revokeRefreshTokenById(id: string) {
   const now = new Date().toISOString();
-  try {
-    const { data, error } = await supabase
-      .from("refresh_tokens")
-      .update({ revoked: true, revoked_at: now })
-      .eq("id", id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
-  } catch (err: any) {
-    const msg = String(err?.message || err);
-    if (
-      msg.includes("Could not find the 'revoked_at' column") ||
-      msg.includes('column "revoked_at"') ||
-      msg.includes("unknown column")
-    ) {
-      const { data, error } = await supabase
-        .from("refresh_tokens")
-        .update({ revoked: true })
-        .eq("id", id)
-        .select()
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    }
-    throw err;
-  }
+  return tokenRepository.revokeRefreshTokenById(id, now);
 }
 
 export async function revokeRefreshTokenByRaw(rawToken: string) {
@@ -99,33 +44,7 @@ export async function revokeRefreshTokenByRaw(rawToken: string) {
 
 export async function revokeAllForUser(userId: string) {
   const now = new Date().toISOString();
-  try {
-    const { data, error } = await supabase
-      .from("refresh_tokens")
-      .update({ revoked: true, revoked_at: now })
-      .eq("user_id", userId)
-      .select();
-
-    if (error) throw error;
-    return data;
-  } catch (err: any) {
-    const msg = String(err?.message || err);
-    if (
-      msg.includes("Could not find the 'revoked_at' column") ||
-      msg.includes('column "revoked_at"') ||
-      msg.includes("unknown column")
-    ) {
-      const { data, error } = await supabase
-        .from("refresh_tokens")
-        .update({ revoked: true })
-        .eq("user_id", userId)
-        .select();
-
-      if (error) throw error;
-      return data;
-    }
-    throw err;
-  }
+  return tokenRepository.revokeAllForUser(userId, now);
 }
 
 export async function rotateRefreshToken(
@@ -142,34 +61,9 @@ export async function rotateRefreshToken(
   const old = await findValidRefreshToken(oldRaw);
   if (!old) throw new Error("Old refresh token not found");
 
-  // mark old revoked (try with revoked_at, fallback without)
-  try {
-    const { data, error } = await supabase
-      .from("refresh_tokens")
-      .update({ revoked: true, revoked_at: new Date().toISOString() })
-      .eq("id", old.id)
-      .select()
-      .maybeSingle();
+  // mark old revoked
+  const now = new Date().toISOString();
+  const revokedOld = await tokenRepository.revokeRefreshTokenById(old.id, now);
 
-    if (error) throw error;
-    return { newRow, old: data };
-  } catch (err: any) {
-    const msg = String(err?.message || err);
-    if (
-      msg.includes("Could not find the 'revoked_at' column") ||
-      msg.includes('column "revoked_at"') ||
-      msg.includes("unknown column")
-    ) {
-      const { data, error } = await supabase
-        .from("refresh_tokens")
-        .update({ revoked: true })
-        .eq("id", old.id)
-        .select()
-        .maybeSingle();
-
-      if (error) throw error;
-      return { newRow, old: data };
-    }
-    throw err;
-  }
+  return { newRow, old: revokedOld };
 }

@@ -1,4 +1,3 @@
-import React from "react";
 import Layout from "../components/Layout";
 import PasswordInput from "../components/PasswordInput";
 import Button from "../../../shared/components/Button";
@@ -8,7 +7,6 @@ export default function ResetPasswordPage() {
   const {
     password,
     confirmPassword,
-    loading,
     setPassword,
     setConfirmPassword,
     handleSubmit,

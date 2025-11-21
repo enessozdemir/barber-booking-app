@@ -35,8 +35,7 @@ export function useBooking() {
             dispatch(setLoading(true));
             const res = await axios.get('/barbers');
             dispatch(setBarbers(res.data.barbers));
-        } catch (error) {
-            console.error('Failed to fetch barbers:', error);
+        } catch {
             dispatch(setError('Berberler yüklenemedi'));
         } finally {
             dispatch(setLoading(false));
@@ -53,8 +52,7 @@ export function useBooking() {
                 params: { barberId, date },
             });
             dispatch(setAvailableSlots(res.data.slots));
-        } catch (error) {
-            console.error('Failed to fetch slots:', error);
+        } catch {
             dispatch(setError('Müsait saatler yüklenemedi'));
         }
     }, [dispatch]);
@@ -75,8 +73,7 @@ export function useBooking() {
             dispatch(setLoading(true));
             const res = await axios.get('/bookings/my-bookings');
             dispatch(setMyBookings(res.data.bookings));
-        } catch (error) {
-            console.error('Failed to fetch bookings:', error);
+        } catch {
             dispatch(setError('Randevular yüklenemedi'));
         } finally {
             dispatch(setLoading(false));

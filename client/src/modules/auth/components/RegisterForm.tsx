@@ -1,4 +1,3 @@
-import React from "react";
 import Button from "../../../shared/components/Button";
 import PasswordInput from "./PasswordInput";
 import FormInput from "./FormInput";

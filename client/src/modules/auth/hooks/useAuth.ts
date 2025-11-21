@@ -35,7 +35,7 @@ export function useAuth() {
   const logout = async () => {
     // server will read refresh token from HttpOnly cookie
     await axios.post("/auth/logout", {}, { withCredentials: true }).catch(
-      () => {}
+      () => { }
     );
     dispatch(logoutAction());
   };
@@ -47,9 +47,8 @@ export function useAuth() {
       const { accessToken, user } = res.data;
       dispatch(setAccessToken(accessToken));
       dispatch(setUser(user));
-    } catch (error) {
-      console.log(error);
-      console.log("Token refresh failed, user needs to login");
+    } catch {
+      // Token refresh failed, user needs to login
     } finally {
       // mark initialization as complete
       dispatch(setInitialized(true));

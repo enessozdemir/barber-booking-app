@@ -38,19 +38,16 @@ export const useForgotPasswordForm = () => {
 
     setLoading(true);
     try {
-      console.info('[forgot page] request payload', { phone: form.phone, email: form.email });
-      const res = await axios.post('/auth/forgot-password', {
+      await axios.post('/auth/forgot-password', {
         phone: form.phone,
         email: form.email,
       });
-      console.info('[forgot page] response', res?.status, res?.data);
       toast.success(
         'Eğer bilgiler eşleşiyorsa, e-posta adresinize bir reset linki gönderildi'
       );
       dispatch(resetForgotPasswordForm());
       navigate('/login');
     } catch (err: unknown) {
-      console.error('forgot-password error', err);
       toast.error(handleError(err));
     } finally {
       setLoading(false);

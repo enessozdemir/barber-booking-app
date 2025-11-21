@@ -67,10 +67,11 @@ export default function CustomerDashboard() {
   const handleBarberSelect = (barber: Barber) => {
     selectBarber(barber);
     setShowBookingForm(true);
-    // default to today so users see current availability immediately
-    setSelectedDate(todayStr);
-    // fetch availability for today immediately
-    fetchAvailableSlots(barber.id, todayStr);
+    // Always use current date to avoid stale date issues
+    const currentDate = new Date().toISOString().split('T')[0];
+    setSelectedDate(currentDate);
+    // fetch availability for current date immediately
+    fetchAvailableSlots(barber.id, currentDate);
     setSelectedTime('');
     setNotes('');
   };
@@ -287,7 +288,7 @@ export default function CustomerDashboard() {
                 <div className="space-y-4">
                   {/* Person Count Selector */}
                   <div className="bg-gray-700/50 p-3 sm:p-4 rounded-lg border border-gray-600">
-                    <label className="block text-gray-300 mb-1 sm:mb-2 font-medium text-sm sm:text-base">Kişi Sayısı / Süre</label>
+                    <label className="block text-gray-300 mb-1 sm:mb-2 font-medium text-sm sm:text-base">Kişi Sayısı</label>
                     <div className="flex gap-2 mt-2">
                       {[1, 2, 3, 4].map((n) => (
                         <button
@@ -297,9 +298,9 @@ export default function CustomerDashboard() {
                             setPersonCount(n);
                             setSelectedTime('');
                           }}
-                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-semibold transition-all text-sm sm:text-base ${personCount === n ? 'bg-secondary text-white' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                          className={`flex-1 px-3 py-2 rounded-lg font-semibold transition-all text-base sm:text-lg ${personCount === n ? 'bg-secondary text-white' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
                         >
-                          <span className="hidden sm:inline">{n} Kişi</span>
+                          {n}
                         </button>
                       ))}
                     </div>

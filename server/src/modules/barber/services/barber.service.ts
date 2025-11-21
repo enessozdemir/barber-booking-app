@@ -1,75 +1,33 @@
+import { AppError } from "../../../utils/AppError";
+import barberRepository from "../repositories/barber.repository";
 import { supabase } from "../../../config/supabase";
-import { AppError } from "../../auth/utils/AppError";
+import logger from "../../../utils/logger";
 
 export async function getActiveBarbers() {
-  const { data, error } = await supabase
-    .from("barbers")
-    .select(`
-      id,
-      active,
-      created_at,
-      avatar_url,
-      users!inner (
-        id,
-        full_name,
-        phone,
-        email
-      )
-    `)
-    .eq("active", true)
-    .order("created_at", { ascending: true });
-
-  if (error) {
+  try {
+    return await barberRepository.findActiveBarbers();
+  } catch (error) {
     throw new Error("Failed to fetch barbers");
   }
-
-  return data || [];
 }
 
 export async function getBarberById(barberId: string) {
-  const { data, error } = await supabase
-    .from("barbers")
-    .select(`
-      id,
-      active,
-      created_at,
-      avatar_url,
-      users!inner (
-        id,
-        full_name,
-        phone,
-        email
-      )
-    `)
-    .eq("id", barberId)
-    .maybeSingle();
-
-  if (error) {
+  try {
+    return await barberRepository.findBarberById(barberId);
+  } catch (error) {
     throw new Error("Failed to fetch barber");
   }
-
-  return data;
 }
 
 export async function getBarberByUserId(userId: string) {
-  const { data, error } = await supabase
-    .from("barbers")
-    .select("*")
-    .eq("id", userId)
-    .single();
-
-  if (error) {
-    return null;
-  }
-
-  return data;
+  return await barberRepository.findBarberByUserId(userId);
 }
 
 export async function uploadBarberAvatar(userId: string, file: any) {
   // Check if user is a barber
   const barber = await getBarberByUserId(userId);
   if (!barber) {
-    throw new AppError("BARBER_NOT_FOUND", "Berber bulunamadı");
+    throw new AppError("BARBER_NOT_FOUND", "Berber bulunamadı", 404);
   }
 
   // Delete old avatar if exists
@@ -84,7 +42,7 @@ export async function uploadBarberAvatar(userId: string, file: any) {
 
   // Generate unique filename
   const fileExt = file.originalname.split('.').pop();
-  const fileName = `${userId}-${Date.now()}.${fileExt}`;
+  const fileName = `${userId} -${Date.now()}.${fileExt} `;
 
   // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
@@ -95,8 +53,8 @@ export async function uploadBarberAvatar(userId: string, file: any) {
     });
 
   if (uploadError) {
-    console.error('Supabase Storage upload error:', uploadError);
-    throw new AppError("UPLOAD_FAILED", `Dosya yüklenemedi: ${uploadError.message}`);
+    logger.error(`Supabase Storage upload error: ${uploadError.message}`);
+    throw new AppError("UPLOAD_FAILED", `Dosya yüklenemedi: ${uploadError.message} `, 500);
   }
 
   // Get public URL
@@ -107,17 +65,14 @@ export async function uploadBarberAvatar(userId: string, file: any) {
   const avatarUrl = urlData.publicUrl;
 
   // Update barber record
-  const { error: updateError } = await supabase
-    .from('barbers')
-    .update({ avatar_url: avatarUrl })
-    .eq('id', userId);
-
-  if (updateError) {
+  try {
+    await barberRepository.updateBarberAvatar(userId, avatarUrl);
+  } catch (updateError) {
     // Rollback: delete uploaded file
     await supabase.storage
       .from('barber-avatars')
       .remove([fileName]);
-    throw new AppError("UPDATE_FAILED", "Avatar kaydedilemedi");
+    throw new AppError("UPDATE_FAILED", "Avatar kaydedilemedi", 500);
   }
 
   return avatarUrl;
@@ -127,17 +82,17 @@ export async function deleteBarberAvatar(userId: string) {
   // Check if user is a barber
   const barber = await getBarberByUserId(userId);
   if (!barber) {
-    throw new AppError("BARBER_NOT_FOUND", "Berber bulunamadı");
+    throw new AppError("BARBER_NOT_FOUND", "Berber bulunamadı", 404);
   }
 
   if (!barber.avatar_url) {
-    throw new AppError("NO_AVATAR", "Silinecek avatar bulunamadı");
+    throw new AppError("NO_AVATAR", "Silinecek avatar bulunamadı", 400);
   }
 
   // Extract filename from URL
   const fileName = barber.avatar_url.split('/').pop();
   if (!fileName) {
-    throw new AppError("INVALID_URL", "Geçersiz avatar URL");
+    throw new AppError("INVALID_URL", "Geçersiz avatar URL", 400);
   }
 
   // Delete from storage
@@ -146,16 +101,13 @@ export async function deleteBarberAvatar(userId: string) {
     .remove([fileName]);
 
   if (deleteError) {
-    throw new AppError("DELETE_FAILED", "Dosya silinemedi");
+    throw new AppError("DELETE_FAILED", "Dosya silinemedi", 500);
   }
 
   // Update barber record
-  const { error: updateError } = await supabase
-    .from('barbers')
-    .update({ avatar_url: null })
-    .eq('id', userId);
-
-  if (updateError) {
-    throw new AppError("UPDATE_FAILED", "Avatar kaydı güncellenemedi");
+  try {
+    await barberRepository.updateBarberAvatar(userId, null);
+  } catch (updateError) {
+    throw new AppError("UPDATE_FAILED", "Avatar kaydı güncellenemedi", 500);
   }
 }

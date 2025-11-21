@@ -1,6 +1,6 @@
-import { supabase } from "../../../config/supabase";
 import { AppError } from "../../auth/utils/AppError";
 import { BOOKING_ERRORS } from "../constants/errorCodes";
+import bookingRepository from "../repositories/booking.repository";
 
 // Time slot helpers
 const BUSINESS_HOURS = {
@@ -29,8 +29,8 @@ function calculateEndTime(startTime: string, duration: number = 30): string {
 
 // Get available slots for a barber on a specific date
 export async function getAvailableSlots(barberId: string, date: string) {
-    // Validate date
-    const selectedDate = new Date(date);
+    // Validate date - compare only date parts, not time
+    const selectedDate = new Date(date + 'T00:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -39,14 +39,7 @@ export async function getAvailableSlots(barberId: string, date: string) {
     }
 
     // Get all booked slots for this barber on this date (only pending and completed)
-    const { data: bookings, error } = await supabase
-        .from("bookings")
-        .select("start_time, end_time, status")
-        .eq("barber_id", barberId)
-        .eq("date", date)
-        .in("status", ["pending", "completed"]);
-
-    if (error) throw error;
+    const bookings = await bookingRepository.findBookingsByBarberAndDate(barberId, date, ["pending", "completed"]);
 
     // Generate all possible slots
     const allSlots = generateTimeSlots();
@@ -127,14 +120,7 @@ export async function createBooking(
     }
 
     // Check for overlapping bookings for the same customer
-    const { data: existingCustomerBookings, error: bookingError } = await supabase
-        .from("bookings")
-        .select("id, start_time, end_time, barbers!inner(users!inner(full_name))")
-        .eq("customer_id", userId)
-        .eq("date", date)
-        .in("status", ["pending", "confirmed"]); // Only check active bookings
-
-    if (bookingError) throw bookingError;
+    const existingCustomerBookings = await bookingRepository.findCustomerBookings(userId, date, ["pending", "confirmed"]);
 
     // Calculate new booking end time for overlap check
     const newBookingStart = new Date(`2000-01-01T${startTime}`);
@@ -164,108 +150,35 @@ export async function createBooking(
     const endTime = calculateEndTime(startTime, duration);
 
     // Check for overlap with existing bookings
-    const { data: overlappingBookings } = await supabase
-        .from("bookings")
-        .select("id")
-        .eq("barber_id", barberId)
-        .eq("date", date)
-        .in("status", ["pending", "completed"])
-        .lt("start_time", endTime)
-        .gt("end_time", startTime);
+    const overlappingBookings = await bookingRepository.findOverlappingBookings(barberId, date, startTime, endTime, ["pending", "completed"]);
 
     if (overlappingBookings && overlappingBookings.length > 0) {
         throw new AppError(BOOKING_ERRORS.SLOT_NOT_AVAILABLE, "One or more slots are already booked", 400);
     }
 
     // Delete any cancelled bookings that overlap with this new booking
-    // This is to ensure we don't hit unique constraints if we had a cancelled booking in this slot
-    // Note: Unique constraint is usually on (barber_id, date, start_time). 
-    // Since we are creating a single booking record, we just need to make sure there isn't a cancelled one 
-    // with the EXACT SAME start_time. 
-    // But to be safe and clean, let's remove any cancelled overlaps.
-
-    // Actually, simpler approach for now: just delete cancelled booking with same start_time
-    // because that's likely the unique key.
-    await supabase
-        .from("bookings")
-        .delete()
-        .eq("barber_id", barberId)
-        .eq("date", date)
-        .eq("start_time", startTime)
-        .eq("status", "cancelled");
+    await bookingRepository.deleteCancelledBooking(barberId, date, startTime);
 
     // Create booking
-    const { data, error } = await supabase
-        .from("bookings")
-        .insert({
-            customer_id: userId,
-            barber_id: barberId,
-            date,
-            start_time: startTime,
-            end_time: endTime,
-            status: "pending",
-            note: note || null,
-        })
-        .select(`
-      *,
-      barbers!inner (
-        id,
-        users!inner (
-          full_name
-        )
-      )
-    `)
-        .single();
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.createBooking({
+        customer_id: userId,
+        barber_id: barberId,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        status: "pending",
+        note: note || null,
+    });
 }
 
 // Get user's bookings
 export async function getUserBookings(userId: string) {
-    const { data, error } = await supabase
-        .from("bookings")
-        .select(`
-      *,
-      barbers!inner (
-        id,
-        users!inner (
-          full_name,
-          phone
-        )
-      )
-    `)
-        .eq("customer_id", userId)
-        .order("date", { ascending: false })
-        .order("start_time", { ascending: false });
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.findUserBookings(userId);
 }
 
 // Get barber's bookings
 export async function getBarberBookings(barberId: string, date?: string) {
-    let query = supabase
-        .from("bookings")
-        .select(`
-      *,
-      customer:users!customer_id (
-        full_name,
-        phone
-      )
-    `)
-        .eq("barber_id", barberId);
-
-    if (date) {
-        query = query.eq("date", date);
-    }
-
-    query = query.order("date", { ascending: true }).order("start_time", { ascending: true });
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.findBarberBookings(barberId, date);
 }
 
 // Update booking status
@@ -275,25 +188,13 @@ export async function updateBookingStatus(
     barberId: string
 ) {
     // Verify booking belongs to this barber
-    const { data: booking } = await supabase
-        .from("bookings")
-        .select("barber_id")
-        .eq("id", bookingId)
-        .single();
+    const booking = await bookingRepository.findBookingById(bookingId);
 
     if (!booking || booking.barber_id !== barberId) {
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
     }
 
-    const { data, error } = await supabase
-        .from("bookings")
-        .update({ status })
-        .eq("id", bookingId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.updateBookingStatus(bookingId, status);
 }
 
 // Update booking price
@@ -307,25 +208,13 @@ export async function updateBookingPrice(
     }
 
     // Verify booking belongs to this barber
-    const { data: booking } = await supabase
-        .from("bookings")
-        .select("barber_id")
-        .eq("id", bookingId)
-        .single();
+    const booking = await bookingRepository.findBookingById(bookingId);
 
     if (!booking || booking.barber_id !== barberId) {
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
     }
 
-    const { data, error } = await supabase
-        .from("bookings")
-        .update({ price })
-        .eq("id", bookingId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.updateBookingPrice(bookingId, price);
 }
 
 // Reschedule booking
@@ -336,11 +225,7 @@ export async function rescheduleBooking(
     barberId: string
 ) {
     // Verify booking belongs to this barber
-    const { data: booking } = await supabase
-        .from("bookings")
-        .select("barber_id")
-        .eq("id", bookingId)
-        .single();
+    const booking = await bookingRepository.findBookingById(bookingId);
 
     if (!booking || booking.barber_id !== barberId) {
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
@@ -362,16 +247,7 @@ export async function rescheduleBooking(
     }
 
     // Check if new slot is available (excluding cancelled bookings)
-    const { data: existingBooking } = await supabase
-        .from("bookings")
-        .select("id")
-        .eq("barber_id", barberId)
-        .eq("date", newDate)
-        .eq("start_time", newStartTime)
-        .neq("status", "cancelled")
-        .in("status", ["pending", "completed"])
-        .neq("id", bookingId)
-        .maybeSingle();
+    const existingBooking = await bookingRepository.findExistingBookingForReschedule(barberId, newDate, newStartTime, bookingId);
 
     if (existingBooking) {
         throw new AppError(BOOKING_ERRORS.SLOT_NOT_AVAILABLE, "This slot is already booked", 400);
@@ -379,63 +255,30 @@ export async function rescheduleBooking(
 
     const newEndTime = calculateEndTime(newStartTime);
 
-    const { data, error } = await supabase
-        .from("bookings")
-        .update({
-            date: newDate,
-            start_time: newStartTime,
-            end_time: newEndTime,
-        })
-        .eq("id", bookingId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.updateBookingTime(bookingId, newDate, newStartTime, newEndTime);
 }
 
 // Cancel booking (user)
 export async function cancelBooking(bookingId: string, userId: string) {
     // Verify booking belongs to this user
-    const { data: booking } = await supabase
-        .from("bookings")
-        .select("customer_id")
-        .eq("id", bookingId)
-        .single();
+    const booking = await bookingRepository.findBookingById(bookingId);
 
     if (!booking || booking.customer_id !== userId) {
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
     }
 
-    const { data, error } = await supabase
-        .from("bookings")
-        .update({ status: "cancelled" })
-        .eq("id", bookingId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
+    return bookingRepository.updateBookingStatus(bookingId, "cancelled");
 }
 
 // Delete booking (barber)
 export async function deleteBooking(bookingId: string, barberId: string) {
     // Verify booking belongs to this barber
-    const { data: booking } = await supabase
-        .from("bookings")
-        .select("barber_id")
-        .eq("id", bookingId)
-        .single();
+    const booking = await bookingRepository.findBookingById(bookingId);
 
     if (!booking || booking.barber_id !== barberId) {
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
     }
 
-    const { error } = await supabase
-        .from("bookings")
-        .delete()
-        .eq("id", bookingId);
-
-    if (error) throw error;
+    await bookingRepository.deleteBooking(bookingId);
     return { success: true };
 }
