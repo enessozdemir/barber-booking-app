@@ -126,10 +126,15 @@ export class BookingRepository {
         return data;
     }
 
-    async updateBookingStatus(bookingId: string, status: string) {
+    async updateBookingStatus(bookingId: string, status: string, price?: number | null) {
+        const updateData: any = { status };
+        if (price !== undefined) {
+            updateData.price = price;
+        }
+
         const { data, error } = await supabase
             .from("bookings")
-            .update({ status })
+            .update(updateData)
             .eq("id", bookingId)
             .select()
             .single();

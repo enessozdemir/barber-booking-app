@@ -3,6 +3,7 @@ import ConfirmModal from '../../../shared/components/ConfirmModal';
 import ScheduleSlot from '../components/ScheduleSlot';
 import { useBarberDashboard } from '../hooks/useBarberDashboard';
 
+
 export default function BarberDashboard() {
   const {
     user,
@@ -179,13 +180,18 @@ export default function BarberDashboard() {
               </div>
 
               <div>
-                <label className="block text-gray-300 mb-2">Fiyat (₺)</label>
+                <label className="block text-gray-300 mb-2">
+                  Fiyat (₺) {status === 'completed' && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="Fiyat girin"
-                  className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder={status === 'completed' ? "Fiyat girin" : "Sadece tamamlanan randevular için"}
+                  disabled={status !== 'completed'}
+                  className={`w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-opacity ${
+                    status !== 'completed' ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 />
               </div>
             </div>
@@ -206,12 +212,19 @@ export default function BarberDashboard() {
             </div>
             
             <div className="mt-4 pt-4 border-t border-gray-700">
-              <button
-                onClick={() => openDeleteConfirm(selectedBooking.id)}
-                className="w-full px-4 py-2.5 bg-red-900/50 text-red-200 border border-red-900/50 rounded-lg font-semibold hover:bg-red-900/70 transition-colors"
-              >
-                Randevuyu Sil
-              </button>
+              {selectedBooking.status !== 'completed' && (
+                <button
+                  onClick={() => openDeleteConfirm(selectedBooking.id)}
+                  className="w-full px-4 py-2.5 bg-red-900/50 text-red-200 border border-red-900/50 rounded-lg font-semibold hover:bg-red-900/70 transition-colors"
+                >
+                  Randevuyu Sil
+                </button>
+              )}
+              {selectedBooking.status === 'completed' && (
+                <p className="text-center text-gray-500 text-sm">
+                  Tamamlanan randevular silinemez.
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -7,6 +7,9 @@ import rateLimit from 'express-rate-limit';
 import authRoutes from './modules/auth/routes/auth.routes';
 import barberRoutes from './modules/barber/routes/barber.routes';
 import bookingRoutes from './modules/booking/routes/booking.routes';
+import earningsRoutes from './modules/earnings/routes/earnings.routes';
+import expensesRoutes from './modules/expenses/routes/expenses.routes';
+import financialRoutes from './modules/financial/routes/financial.routes';
 import errorHandler from './middleware/errorHandler';
 import { corsOptions } from './config/cors';
 
@@ -38,6 +41,9 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/barbers', barberRoutes);
 app.use('/bookings', bookingRoutes);
+app.use('/earnings', earningsRoutes);
+app.use('/expenses', expensesRoutes);
+app.use('/financial', financialRoutes);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 

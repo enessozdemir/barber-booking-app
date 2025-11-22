@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as bookingService from "../services/booking.service";
-import * as dailyEarningsService from "../services/dailyEarnings.service";
 import * as barberService from "../../barber/services/barber.service";
+import earningsRepository from "../../earnings/repositories/earnings.repository";
 import catchAsync from "../../../utils/catchAsync";
 import { AppError } from "../../auth/utils/AppError";
 
@@ -124,6 +124,17 @@ export const updateBookingStatus = catchAsync(async (req: Request, res: Response
     }
 
     const booking = await bookingService.updateBookingStatus(id, status, barber.id);
+
+    // If status is NOT completed, delete any existing earning record
+    if (status !== 'completed') {
+        try {
+            await earningsRepository.deleteByBookingId(id);
+        } catch (error) {
+            // Log error but don't fail the request (record might not exist)
+            console.error('Failed to delete earning record:', error);
+        }
+    }
+
     res.json({ booking, message: 'Booking status updated successfully' });
 });
 
@@ -157,14 +168,21 @@ export const updateBookingPrice = catchAsync(async (req: Request, res: Response)
 
     const booking = await bookingService.updateBookingPrice(id, price, barber.id);
 
-    // If booking has a price and is completed, add to daily earnings
+    // If booking has a price and is completed, try to add/update earnings
     if (price > 0 && booking.status === 'completed') {
-        await dailyEarningsService.addBookingEarning(
-            barber.id,
-            booking.id,
-            price,
-            booking.date
-        );
+        try {
+            await earningsRepository.upsertByBookingId({
+                barber_id: barber.id,
+                booking_id: booking.id,
+                amount: price,
+                date: booking.date,
+                type: 'booking'
+            });
+        } catch (earningError: any) {
+            // Log error but don't fail the booking update
+            console.error('Failed to create/update earning record:', earningError.message);
+            // Continue - booking price was updated successfully
+        }
     }
 
     res.json({ booking, message: 'Booking price updated successfully' });
@@ -250,12 +268,13 @@ export const addManualEarning = catchAsync(async (req: Request, res: Response) =
         return;
     }
 
-    const earning = await dailyEarningsService.addManualEarning(
-        barber.id,
+    const earning = await earningsRepository.create({
+        barber_id: barber.id,
         amount,
         date,
-        notes
-    );
+        type: 'walk_in',
+        note: notes
+    });
 
     res.status(201).json({ earning, message: 'Manual earning added successfully' });
 });
@@ -277,10 +296,9 @@ export const getDailyEarnings = catchAsync(async (req: Request, res: Response) =
         return;
     }
 
-    const earnings = await dailyEarningsService.getDailyEarnings(
-        barber.id,
-        date as string | undefined
-    );
+    // Use current date if not provided
+    const targetDate = date as string || new Date().toISOString().split('T')[0];
+    const earnings = await earningsRepository.getByBarberAndDate(barber.id, targetDate);
 
     res.json({ earnings });
 });

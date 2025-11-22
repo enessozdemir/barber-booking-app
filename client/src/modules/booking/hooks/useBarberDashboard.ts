@@ -86,10 +86,17 @@ export function useBarberDashboard() {
     const handleUpdateBooking = useCallback(async () => {
         if (!selectedBooking) return;
 
+        // Validation: Price is mandatory for completed bookings
+        if (status === 'completed' && (!price || parseFloat(price) <= 0)) {
+            toast.error('Tamamlanan randevular için fiyat girmek zorunludur');
+            return;
+        }
+
         try {
             await axios.patch(`/bookings/${selectedBooking.id}/status`, { status });
 
-            if (price && parseFloat(price) > 0) {
+            // Only update price if status is completed
+            if (status === 'completed' && price && parseFloat(price) > 0) {
                 await axios.patch(`/bookings/${selectedBooking.id}/price`, { price: parseFloat(price) });
             }
 

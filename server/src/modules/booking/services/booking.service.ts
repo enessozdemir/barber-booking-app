@@ -194,7 +194,11 @@ export async function updateBookingStatus(
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
     }
 
-    return bookingRepository.updateBookingStatus(bookingId, status);
+    // If status is not completed, clear the price (set to null)
+    // If status is completed, keep existing price (undefined means don't update)
+    const price = status === 'completed' ? undefined : null;
+
+    return bookingRepository.updateBookingStatus(bookingId, status, price);
 }
 
 // Update booking price
@@ -277,6 +281,11 @@ export async function deleteBooking(bookingId: string, barberId: string) {
 
     if (!booking || booking.barber_id !== barberId) {
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
+    }
+
+    // Cannot delete completed bookings
+    if (booking.status === 'completed') {
+        throw new AppError(BOOKING_ERRORS.CANNOT_DELETE_COMPLETED, "Cannot delete completed bookings", 400);
     }
 
     await bookingRepository.deleteBooking(bookingId);
