@@ -1,162 +1,35 @@
-import { useEffect, useState } from 'react';
-import { useBooking } from '../hooks/useBooking';
-import { useAuth } from '../../auth/hooks/useAuth';
-import { toast } from 'react-toastify';
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import Header from '../../../shared/components/Header';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
-
-interface Barber {
-  id: string;
-  active: boolean;
-  created_at: string;
-  users: {
-    id: string;
-    full_name: string;
-    phone: string;
-    email: string;
-  };
-}
+import { useCustomerDashboard } from '../hooks/useCustomerDashboard';
+import { formatPhoneNumber, getBarberInitials } from '../../../shared/utils/formatters';
 
 export default function CustomerDashboard() {
-  const { booking, fetchBarbers, selectBarber, fetchAvailableSlots, createBooking, fetchMyBookings, cancelBooking } = useBooking();
-  const { state: authState } = useAuth();
-  const { handleError } = useErrorHandler();
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [selectedTime, setSelectedTime] = useState('');
-  const [notes, setNotes] = useState('');
-  const [personCount, setPersonCount] = useState(1);
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'book' | 'my-bookings'>('book');
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    bookingId: string | null;
-  }>({ isOpen: false, bookingId: null });
-  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending' | 'cancelled'>('all');
-
-  useEffect(() => {
-    selectBarber(null);
-    fetchBarbers();
-    fetchMyBookings();
-  }, [selectBarber, fetchBarbers, fetchMyBookings]);
-
-  const getFilteredBookings = () => {
-    // Start with a shallow copy so we don't mutate redux state
-    let list = booking.myBookings ? booking.myBookings.slice() : [];
-
-    if (filterStatus !== 'all') {
-      list = list.filter(b => {
-        if (filterStatus === 'cancelled') {
-          return b.status === 'cancelled' || b.status === 'rejected';
-        }
-        return b.status === filterStatus;
-      });
-    }
-
-    // Sort by most-recent action/creation (latest first)
-    list.sort((a, b) => {
-      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return tb - ta;
-    });
-
-    return list;
-  };
-
-  const handleBarberSelect = (barber: Barber) => {
-    selectBarber(barber);
-    setShowBookingForm(true);
-    // Always use current date to avoid stale date issues
-    const currentDate = new Date().toISOString().split('T')[0];
-    setSelectedDate(currentDate);
-    // fetch availability for current date immediately
-    fetchAvailableSlots(barber.id, currentDate);
-    setSelectedTime('');
-    setNotes('');
-  };
-
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-    setSelectedTime(''); // Reset time when date changes
-    if (booking.selectedBarber && date) {
-      fetchAvailableSlots(booking.selectedBarber.id, date);
-    }
-  };
-
-  const handleBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!booking.selectedBarber || !selectedDate || !selectedTime) {
-      toast.error('Lütfen tüm alanları doldurun');
-      return;
-    }
-
-    const duration = personCount * 30; // Each person = 30 minutes
-
-    try {
-      await createBooking(booking.selectedBarber.id, selectedDate, selectedTime, notes, duration);
-      toast.success('Randevu başarıyla oluşturuldu!');
-      setShowBookingForm(false);
-      selectBarber(null);
-      setPersonCount(1);
-      fetchMyBookings();
-    } catch (err) {
-      toast.error(handleError(err));
-    }
-  };
-
-  const handleCancelBooking = async (bookingId: string) => {
-    setConfirmModal({ isOpen: true, bookingId });
-  };
-
-  const confirmCancelBooking = async () => {
-    if (!confirmModal.bookingId) return;
-    
-    try {
-      await cancelBooking(confirmModal.bookingId);
-      toast.success('Randevu iptal edildi');
-      await fetchMyBookings();
-      
-      // Refresh available slots if a barber and date are selected
-      if (booking.selectedBarber && selectedDate) {
-        await fetchAvailableSlots(booking.selectedBarber.id, selectedDate);
-      }
-    } catch (err) {
-      toast.error(handleError(err));
-    } finally {
-      setConfirmModal({ isOpen: false, bookingId: null });
-    }
-  };
-
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
-
-  const formatPhoneNumber = (phone: string) => {
-    // Remove all non-digit characters
-    const cleaned = phone.replace(/\D/g, '');
-    
-    // Format as +90 XXX XXX XX XX
-    if (cleaned.length === 11 && cleaned.startsWith('0')) {
-      // Remove leading 0 and add +90
-      const withoutZero = cleaned.substring(1);
-      return `+90 ${withoutZero.substring(0, 3)} ${withoutZero.substring(3, 6)} ${withoutZero.substring(6, 8)} ${withoutZero.substring(8, 10)}`;
-    } else if (cleaned.length === 10) {
-      // Already without leading 0
-      return `+90 ${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6, 8)} ${cleaned.substring(8, 10)}`;
-    }
-    // Return as is if format is unexpected
-    return phone;
-  };
-
-  const getBarberInitials = (name: string) => {
-    const parts = name.split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
+  const {
+    booking,
+    authState,
+    selectedDate,
+    selectedTime,
+    notes,
+    personCount,
+    showBookingForm,
+    activeTab,
+    confirmModal,
+    filterStatus,
+    filteredBookings,
+    minDate,
+    setSelectedTime,
+    setNotes,
+    setPersonCount,
+    setActiveTab,
+    setConfirmModal,
+    setFilterStatus,
+    handleBarberSelect,
+    handleDateChange,
+    handleBookingSubmit,
+    handleCancelBooking,
+    confirmCancelBooking,
+    closeBookingForm,
+  } = useCustomerDashboard();
 
   return (
     <>
@@ -256,10 +129,7 @@ export default function CustomerDashboard() {
                       Randevu Oluştur - {booking.selectedBarber.users.full_name}
                     </h2>
                     <button
-                      onClick={() => {
-                        setShowBookingForm(false);
-                        selectBarber(null);
-                      }}
+                      onClick={closeBookingForm}
                       className="text-gray-400 hover:text-white transition-all"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +144,7 @@ export default function CustomerDashboard() {
                         type="date"
                         value={selectedDate}
                         onChange={(e) => handleDateChange(e.target.value)}
-                        min={getMinDate()}
+                        min={minDate}
                         onKeyDown={(e) => e.preventDefault()}
                         className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                         required
@@ -334,9 +204,6 @@ export default function CustomerDashboard() {
                       }
 
                       const endTime = new Date(`2000-01-01T${slot.time}`);
-                      // If booked, use span to calculate end time. If available, use personCount * 30 (for display logic only if we wanted to show potential end time, but usually we show single slot time for available)
-                      // Actually for available slots we usually show just the slot time or slot+30. 
-                      // Let's keep it simple: Booked = span * 30. Available = 30.
                       const durationMinutes = !slot.available && slot.span ? slot.span * 30 : 30;
                       endTime.setMinutes(endTime.getMinutes() + durationMinutes);
                       const endTimeStr = endTime.toTimeString().slice(0, 5);
@@ -353,50 +220,34 @@ export default function CustomerDashboard() {
                         }
                       }
 
-                      // Determine color based on status
-                      let colorClass = '';
+                      const isDisabled = !slot.available || (personCount > 1 && !isConsecutiveAvailable);
+                      const span = !slot.available && slot.span ? slot.span : 1;
                       
-                      // Selection Logic
+                      // Determine if this slot or any consecutive slots are selected
                       let isSelected = false;
-                      if (selectedTime && slot.available) {
-                         const selectedStart = new Date(`2000-01-01T${selectedTime}`);
-                         const selectedEnd = new Date(selectedStart);
-                         selectedEnd.setMinutes(selectedEnd.getMinutes() + (personCount * 30));
-                         const currentSlotTime = new Date(`2000-01-01T${slot.time}`);
-                         if (currentSlotTime >= selectedStart && currentSlotTime < selectedEnd) {
-                             isSelected = true;
-                         }
-                      }
-
-                      if (isSelected) {
-                        colorClass = 'bg-secondary';
-                      } else if (slot.available && isConsecutiveAvailable) {
-                        colorClass = 'bg-gray-700 hover:bg-gray-600';
-                      } else if (slot.available && !isConsecutiveAvailable) {
-                        colorClass = 'bg-gray-700/50 cursor-not-allowed opacity-50';
-                      } else {
-                        if (slot.status === 'completed') {
-                          colorClass = 'bg-green-900/50 border border-green-700/50 cursor-not-allowed';
-                        } else {
-                          colorClass = 'bg-red-900/50 border border-red-700/50 cursor-not-allowed';
+                      if (selectedTime) {
+                        const selectedIndex = booking.availableSlots.findIndex(s => s.time === selectedTime);
+                        if (selectedIndex !== -1 && slot.available) {
+                          // Check if this slot is within the selected range
+                          isSelected = index >= selectedIndex && index < selectedIndex + personCount;
                         }
                       }
 
-                      // Span Logic
-                      // Booked slots use their span. Available slots are always 1.
-                      const span = !slot.available && slot.span ? slot.span : 1;
-
                       return (
                         <button
-                          key={slot.time}
+                          key={index}
                           type="button"
-                          onClick={() => {
-                            if (slot.available && isConsecutiveAvailable) {
-                              setSelectedTime(slot.time);
-                            }
-                          }}
-                          disabled={!slot.available || (slot.available && !isConsecutiveAvailable)}
-                          className={`booking-slot px-2 sm:px-4 py-2 text-white rounded-lg transition-all flex flex-col justify-center items-center text-center h-12 ${colorClass}`}
+                          onClick={() => setSelectedTime(slot.time)}
+                          disabled={isDisabled}
+                          className={`booking-slot px-3 py-2 rounded-lg font-semibold transition-all text-xs sm:text-sm border-2 ${
+                            isSelected
+                              ? 'bg-secondary text-white border-secondary'
+                              : !slot.available
+                              ? 'bg-red-800/40 border-red-600 text-red-300 cursor-not-allowed'
+                              : isDisabled
+                              ? 'bg-gray-900 border-gray-700 text-gray-600 cursor-not-allowed'
+                              : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:border-gray-600'
+                          }`}
                           style={{ '--span': span } as React.CSSProperties}
                         >
                           <span className="font-semibold text-xs sm:text-sm truncate w-full">{slot.time} - {endTimeStr}</span>
@@ -432,10 +283,7 @@ export default function CustomerDashboard() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowBookingForm(false);
-                          selectBarber(null);
-                        }}
+                        onClick={closeBookingForm}
                         className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all cursor-pointer"
                       >
                         İptal
@@ -483,10 +331,10 @@ export default function CustomerDashboard() {
               <p className="text-gray-400">Henüz randevunuz bulunmuyor.</p>
             ) : (
               <div className="space-y-4">
-                {getFilteredBookings().length === 0 ? (
+                {filteredBookings.length === 0 ? (
                   <p className="text-gray-400 text-center py-4">Bu kategoride randevu bulunamadı.</p>
                 ) : (
-                  getFilteredBookings().map((b) => (
+                  filteredBookings.map((b) => (
                     <div
                       key={b.id}
                       className="bg-gray-700/50 rounded-lg p-4 flex justify-between items-center border border-gray-700 hover:border-gray-600 transition-all"

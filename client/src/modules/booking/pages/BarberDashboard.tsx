@@ -1,117 +1,30 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import type { RootState } from '../../app/store';
-import { setBarberBookings, setLoading } from '../store/bookingSlice';
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import Header from '../../../shared/components/Header';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
-
-interface Booking {
-  id: string;
-  customer_id: string;
-  barber_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  note?: string;
-  price?: number;
-  created_at: string;
-  customer?: {
-    full_name: string;
-    phone: string;
-  };
-}
-
-// Generate time slots (8:00 - 20:00, 30min intervals)
-const generateTimeSlots = (): string[] => {
-  const slots: string[] = [];
-  for (let hour = 8; hour < 20; hour++) {
-    slots.push(`${hour.toString().padStart(2, '0')}:00`);
-    slots.push(`${hour.toString().padStart(2, '0')}:30`);
-  }
-  return slots;
-};
+import ScheduleSlot from '../components/ScheduleSlot';
+import { useBarberDashboard } from '../hooks/useBarberDashboard';
 
 export default function BarberDashboard() {
-  const dispatch = useDispatch();
-  const { handleError } = useErrorHandler();
-  const user = useSelector((state: RootState) => state.auth.user);
-  const bookings = useSelector((state: RootState) => state.booking.barberBookings);
-  const loading = useSelector((state: RootState) => state.booking.loading);
-  
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [price, setPrice] = useState('');
-  const [status, setStatus] = useState('pending');
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    bookingId: string | null;
-  }>({ isOpen: false, bookingId: null });
-
-  const fetchSchedule = useCallback(async (date: string) => {
-    try {
-      dispatch(setLoading(true));
-      const res = await axios.get('/bookings/barber/schedule', { params: { date } });
-      dispatch(setBarberBookings(res.data.bookings));
-    } catch (err) {
-      toast.error(handleError(err));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch, handleError]);
-
-  useEffect(() => {
-    fetchSchedule(selectedDate);
-  }, [fetchSchedule, selectedDate]);
-
-  const handleSlotClick = (booking: Booking | undefined) => {
-    if (!booking) return;
-    setSelectedBooking(booking);
-    setPrice(booking.price?.toString() || '');
-    setStatus(booking.status);
-    setShowModal(true);
-  };
-
-  const handleDeleteBooking = async () => {
-    if (!confirmModal.bookingId) return;
-
-    try {
-      await axios.delete(`/bookings/${confirmModal.bookingId}`);
-      toast.success('Randevu silindi');
-      fetchSchedule(selectedDate);
-      setConfirmModal({ isOpen: false, bookingId: null });
-      setSelectedBooking(null);
-      setShowModal(false);
-    } catch (err) {
-      toast.error(handleError(err));
-    }
-  };
-
-  const handleUpdateBooking = async () => {
-    if (!selectedBooking) return;
-
-    try {
-      // Update status
-      await axios.patch(`/bookings/${selectedBooking.id}/status`, { status });
-      
-      // Update price if provided
-      if (price && parseFloat(price) > 0) {
-        await axios.patch(`/bookings/${selectedBooking.id}/price`, { price: parseFloat(price) });
-      }
-
-      toast.success('Randevu güncellendi');
-      fetchSchedule(selectedDate);
-      setShowModal(false);
-    } catch (err) {
-      toast.error(handleError(err));
-    }
-  };
-
-  const allSlots = generateTimeSlots();
+  const {
+    user,
+    bookings,
+    loading,
+    selectedDate,
+    selectedBooking,
+    showModal,
+    price,
+    status,
+    confirmModal,
+    allSlots,
+    setSelectedDate,
+    setPrice,
+    setStatus,
+    handleSlotClick,
+    handleDeleteBooking,
+    handleUpdateBooking,
+    closeModal,
+    openDeleteConfirm,
+    closeDeleteConfirm,
+  } = useBarberDashboard();
 
   return (
     <>
@@ -180,30 +93,14 @@ export default function BarberDashboard() {
                       const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
                       const span = Math.ceil(durationMinutes / 30);
                       
-                      // Determine color based on status
-                      let colorClass = 'bg-gray-700 cursor-not-allowed opacity-50';
-                      if (booking.status === 'cancelled') {
-                        colorClass = 'bg-red-900/50 border border-red-700/50 cursor-pointer';
-                      } else if (booking.status === 'pending') {
-                        colorClass = 'bg-yellow-900/50 border border-yellow-700/50 cursor-pointer';
-                      } else if (booking.status === 'completed') {
-                        colorClass = 'bg-green-900/50 border border-green-700/50 cursor-pointer';
-                      }
-
                       renderedSlots.push(
-                        <button
+                        <ScheduleSlot
                           key={slot}
-                          onClick={() => handleSlotClick(booking)}
-                          className={`booking-slot p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center ${colorClass}`}
-                          style={{ '--span': span } as React.CSSProperties}
-                        >
-                          <div className="text-white font-semibold text-sm">
-                            {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
-                          </div>
-                          <div className="text-xs text-gray-200 truncate w-full">
-                            {booking.customer?.full_name || 'Müşteri'}
-                          </div>
-                        </button>
+                          booking={booking}
+                          slot={slot}
+                          span={span}
+                          onClick={handleSlotClick}
+                        />
                       );
                       
                       // Skip the next slots that are covered by this booking
@@ -218,22 +115,14 @@ export default function BarberDashboard() {
                       });
 
                       if (!isInsideBooking) {
-                          const endTime = new Date(`2000-01-01T${slot}`);
-                          endTime.setMinutes(endTime.getMinutes() + 30);
-                          const endTimeStr = endTime.toTimeString().slice(0, 5);
-
-                          renderedSlots.push(
-                            <button
-                              key={slot}
-                              disabled
-                              className="booking-slot p-3 rounded-lg transition-all h-20 flex flex-col justify-center items-center text-center bg-gray-700 cursor-not-allowed opacity-50"
-                              style={{ '--span': 1 } as React.CSSProperties}
-                            >
-                              <div className="text-white font-semibold text-sm">
-                                {slot} - {endTimeStr}
-                              </div>
-                            </button>
-                          );
+                        renderedSlots.push(
+                          <ScheduleSlot
+                            key={slot}
+                            slot={slot}
+                            span={1}
+                            onClick={handleSlotClick}
+                          />
+                        );
                       }
                     }
                   }
@@ -303,7 +192,7 @@ export default function BarberDashboard() {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors"
               >
                 İptal
@@ -318,10 +207,7 @@ export default function BarberDashboard() {
             
             <div className="mt-4 pt-4 border-t border-gray-700">
               <button
-                onClick={() => {
-                  setShowModal(false);
-                  setConfirmModal({ isOpen: true, bookingId: selectedBooking.id });
-                }}
+                onClick={() => openDeleteConfirm(selectedBooking.id)}
                 className="w-full px-4 py-2.5 bg-red-900/50 text-red-200 border border-red-900/50 rounded-lg font-semibold hover:bg-red-900/70 transition-colors"
               >
                 Randevuyu Sil
@@ -340,7 +226,7 @@ export default function BarberDashboard() {
         cancelText="Vazgeç"
         type="danger"
         onConfirm={handleDeleteBooking}
-        onCancel={() => setConfirmModal({ isOpen: false, bookingId: null })}
+        onCancel={closeDeleteConfirm}
       />
     </>
   );

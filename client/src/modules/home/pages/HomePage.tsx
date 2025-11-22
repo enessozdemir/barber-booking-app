@@ -1,7 +1,7 @@
 import { useHomePage } from "../hooks/useHomePage";
 
 export default function HomePage() {
-  const { user, handleLogout, getUserDisplayName } = useHomePage();
+  const { handleLogout, getUserDisplayName } = useHomePage();
   const displayName = getUserDisplayName();
 
   return (
