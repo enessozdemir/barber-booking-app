@@ -1,7 +1,11 @@
-import Header from '../../../shared/components/Header';
+import BarberLayout from '../../../components/layout/BarberLayout';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
 import ScheduleSlot from '../components/ScheduleSlot';
 import { useBarberDashboard } from '../hooks/useBarberDashboard';
+import WalkInModal from '../../financial/components/WalkInModal';
+import ExpenseModal from '../../financial/components/ExpenseModal';
+import DatePicker from '../../../shared/components/DatePicker';
+import { useState } from 'react';
 
 
 export default function BarberDashboard() {
@@ -25,12 +29,15 @@ export default function BarberDashboard() {
     closeModal,
     openDeleteConfirm,
     closeDeleteConfirm,
+    fetchSchedule,
   } = useBarberDashboard();
 
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+
   return (
-    <>
-      <Header />
-      <div className="min-h-screen p-6 pt-24 bg-dark">
+    <BarberLayout>
+      <div className="min-h-screen p-6 bg-dark">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -40,16 +47,24 @@ export default function BarberDashboard() {
             <p className="text-sm sm:text-base text-gray-400">Günlük randevularınızı yönetin</p>
           </div>
 
-          {/* Date Picker */}
-          <div className="mb-6">
-            <label className="block text-gray-300 mb-2">Tarih Seç</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              onKeyDown={(e) => e.preventDefault()}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
-            />
+          {/* Date Picker & Walk-In Button */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="flex-1">
+              <label className="block text-gray-300 mb-2">Tarih Seç</label>
+              <DatePicker value={selectedDate} onChange={setSelectedDate} className="w-full" />
+            </div>
+            <button
+              onClick={() => setShowWalkInModal(true)}
+              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg"
+            >
+              + Müşteri Ekle
+            </button>
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg"
+            >
+              + Gider Ekle
+            </button>
           </div>
 
           {/* Time Slot Grid */}
@@ -241,6 +256,22 @@ export default function BarberDashboard() {
         onConfirm={handleDeleteBooking}
         onCancel={closeDeleteConfirm}
       />
-    </>
+
+      {/* Walk-In Modal */}
+      <WalkInModal
+        isOpen={showWalkInModal}
+        onClose={() => setShowWalkInModal(false)}
+        onSuccess={() => fetchSchedule(selectedDate)}
+        initialDate={selectedDate}
+      />
+
+      {/* Expense Modal */}
+      <ExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        onSuccess={() => {}} // No need to refresh schedule for expenses
+        initialDate={selectedDate}
+      />
+    </BarberLayout>
   );
 }

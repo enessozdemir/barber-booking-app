@@ -31,6 +31,13 @@ class ExpensesService {
     }
 
     /**
+     * Get all business expenses for a date (now returns ALL expenses for business view)
+     */
+    async getBusinessExpenses(date: string): Promise<Expense[]> {
+        return await expensesRepository.getAllByDate(date);
+    }
+
+    /**
      * Get daily expense summary for a barber
      */
     async getDailySummary(barberId: string, date: string): Promise<DailyExpenseSummary> {
@@ -125,6 +132,48 @@ class ExpensesService {
         }
 
         await expensesRepository.delete(id);
+    }
+
+    /**
+     * Get business daily summary (all expenses)
+     */
+    async getBusinessDailySummary(date: string): Promise<DailyExpenseSummary> {
+        const items = await expensesRepository.getAllByDate(date);
+        const total = items.reduce((sum, e) => sum + Number(e.amount), 0);
+        const personal = items.filter(i => i.type === 'personal').reduce((sum, e) => sum + Number(e.amount), 0);
+        const business = items.filter(i => i.type === 'business').reduce((sum, e) => sum + Number(e.amount), 0);
+
+        return { personal, business, total, items };
+    }
+
+    /**
+     * Get business monthly summary (all expenses)
+     */
+    async getBusinessMonthlySummary(year: number, month: number): Promise<MonthlyExpenseSummary> {
+        const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString().split('T')[0];
+        const endDate = new Date(Date.UTC(year, month, 0)).toISOString().split('T')[0];
+
+        const items = await expensesRepository.getAllByDateRange(startDate, endDate);
+        const total = items.reduce((sum, e) => sum + Number(e.amount), 0);
+        const personal = items.filter(i => i.type === 'personal').reduce((sum, e) => sum + Number(e.amount), 0);
+        const business = items.filter(i => i.type === 'business').reduce((sum, e) => sum + Number(e.amount), 0);
+
+        return { personal, business, total, items };
+    }
+
+    /**
+     * Get business yearly summary (all expenses)
+     */
+    async getBusinessYearlySummary(year: number): Promise<YearlyExpenseSummary> {
+        const startDate = `${year}-01-01`;
+        const endDate = `${year}-12-31`;
+
+        const items = await expensesRepository.getAllByDateRange(startDate, endDate);
+        const total = items.reduce((sum, e) => sum + Number(e.amount), 0);
+        const personal = items.filter(i => i.type === 'personal').reduce((sum, e) => sum + Number(e.amount), 0);
+        const business = items.filter(i => i.type === 'business').reduce((sum, e) => sum + Number(e.amount), 0);
+
+        return { personal, business, total, items };
     }
 }
 

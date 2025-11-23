@@ -14,6 +14,7 @@ router.delete('/:id', expensesController.delete);
 
 // Summaries
 router.get('/daily/:date', expensesController.getDailySummary);
+router.get('/business/items/:date', expensesController.getBusinessExpenses);
 router.get('/monthly/:year/:month', expensesController.getMonthlySummary);
 router.get('/yearly/:year', expensesController.getYearlySummary);
 

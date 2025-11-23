@@ -65,6 +65,21 @@ class ExpensesController {
     });
 
     /**
+     * Get business expenses list
+     * GET /api/expenses/business/items/:date
+     */
+    getBusinessExpenses = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { date } = req.params;
+
+        const items = await expensesService.getBusinessExpenses(date);
+
+        res.status(200).json({
+            success: true,
+            data: { items },
+        });
+    });
+
+    /**
      * Get monthly expense summary
      * GET /api/expenses/monthly/:year/:month
      */

@@ -9,6 +9,7 @@ router.use(verifyToken);
 
 // Walk-in earnings
 router.post('/walk-in', earningsController.createWalkIn);
+router.patch('/:id', earningsController.updateEarning);
 
 // Personal earnings summaries
 router.get('/daily/:date', earningsController.getDailySummary);
@@ -17,6 +18,7 @@ router.get('/yearly/:year', earningsController.getYearlySummary);
 
 // Business earnings summaries
 router.get('/business/daily/:date', earningsController.getBusinessDailySummary);
+router.get('/business/items/:date', earningsController.getBusinessEarnings);
 router.get('/business/monthly/:year/:month', earningsController.getBusinessMonthlySummary);
 router.get('/business/yearly/:year', earningsController.getBusinessYearlySummary);
 

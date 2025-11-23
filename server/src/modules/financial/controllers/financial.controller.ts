@@ -70,6 +70,50 @@ class FinancialController {
             data: summary,
         });
     });
+    /**
+     * Get business daily financial summary
+     * GET /api/financial/summary/business/daily/:date
+     */
+    getBusinessDailySummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { date } = req.params;
+
+        const summary = await financialService.getBusinessDailySummary(date);
+
+        res.status(200).json({
+            success: true,
+            data: summary,
+        });
+    });
+
+    /**
+     * Get business monthly financial summary
+     * GET /api/financial/summary/business/monthly/:year/:month
+     */
+    getBusinessMonthlySummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { year, month } = req.params;
+
+        const summary = await financialService.getBusinessMonthlySummary(parseInt(year), parseInt(month));
+
+        res.status(200).json({
+            success: true,
+            data: summary,
+        });
+    });
+
+    /**
+     * Get business yearly financial summary
+     * GET /api/financial/summary/business/yearly/:year
+     */
+    getBusinessYearlySummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { year } = req.params;
+
+        const summary = await financialService.getBusinessYearlySummary(parseInt(year));
+
+        res.status(200).json({
+            success: true,
+            data: summary,
+        });
+    });
 }
 
 export default new FinancialController();

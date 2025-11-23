@@ -29,15 +29,11 @@ class EarningsService {
      * Create a walk-in earning
      */
     async createWalkIn(barberId: string, amount: number, date: string, note?: string): Promise<Earning> {
-        const earningData: CreateEarningDTO = {
-            barber_id: barberId,
-            amount,
-            date,
-            type: 'walk_in',
-            note,
-        };
+        return await earningsRepository.createWalkIn(barberId, amount, date, note);
+    }
 
-        return await earningsRepository.create(earningData);
+    async updateEarning(id: string, updates: { amount?: number; note?: string; date?: string }) {
+        return await earningsRepository.updateEarning(id, updates);
     }
 
     /**
@@ -131,9 +127,16 @@ class EarningsService {
     }
 
     /**
+     * Get all business earnings for a date
+     */
+    async getBusinessEarnings(date: string): Promise<EarningWithBarber[]> {
+        return await earningsRepository.getAllByDate(date);
+    }
+
+    /**
      * Get business monthly summary (all barbers)
      */
-    async getBusinessMonthlySummary(year: number, month: number): Promise<BusinessDailySummary> {
+    async getBusinessMonthlySummary(year: number, month: number): Promise<BusinessDailySummary & { byDay: { date: string; amount: number }[] }> {
         const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
@@ -144,14 +147,22 @@ class EarningsService {
 
         // Group by barber
         const byBarberMap = new Map<string, { name: string; amount: number }>();
+        // Group by day
+        const byDayMap = new Map<string, number>();
+
         items.forEach(e => {
+            // Barber grouping
             const name = e.barbers?.users?.full_name || 'Unknown';
-            const current = byBarberMap.get(e.barber_id);
-            if (current) {
-                current.amount += Number(e.amount);
+            const currentBarber = byBarberMap.get(e.barber_id);
+            if (currentBarber) {
+                currentBarber.amount += Number(e.amount);
             } else {
                 byBarberMap.set(e.barber_id, { name, amount: Number(e.amount) });
             }
+
+            // Day grouping
+            const currentDay = byDayMap.get(e.date) || 0;
+            byDayMap.set(e.date, currentDay + Number(e.amount));
         });
 
         const byBarber = Array.from(byBarberMap.entries()).map(([barberId, data]) => ({
@@ -160,13 +171,15 @@ class EarningsService {
             amount: data.amount,
         }));
 
-        return { total, byBarber };
+        const byDay = Array.from(byDayMap.entries()).map(([date, amount]) => ({ date, amount }));
+
+        return { total, byBarber, byDay };
     }
 
     /**
      * Get business yearly summary (all barbers)
      */
-    async getBusinessYearlySummary(year: number): Promise<BusinessDailySummary> {
+    async getBusinessYearlySummary(year: number): Promise<BusinessDailySummary & { byMonth: { month: number; amount: number }[] }> {
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
 
@@ -176,14 +189,23 @@ class EarningsService {
 
         // Group by barber
         const byBarberMap = new Map<string, { name: string; amount: number }>();
+        // Group by month
+        const byMonthMap = new Map<number, number>();
+
         items.forEach(e => {
+            // Barber grouping
             const name = e.barbers?.users?.full_name || 'Unknown';
-            const current = byBarberMap.get(e.barber_id);
-            if (current) {
-                current.amount += Number(e.amount);
+            const currentBarber = byBarberMap.get(e.barber_id);
+            if (currentBarber) {
+                currentBarber.amount += Number(e.amount);
             } else {
                 byBarberMap.set(e.barber_id, { name, amount: Number(e.amount) });
             }
+
+            // Month grouping
+            const month = parseInt(e.date.split('-')[1], 10);
+            const currentMonth = byMonthMap.get(month) || 0;
+            byMonthMap.set(month, currentMonth + Number(e.amount));
         });
 
         const byBarber = Array.from(byBarberMap.entries()).map(([barberId, data]) => ({
@@ -192,7 +214,9 @@ class EarningsService {
             amount: data.amount,
         }));
 
-        return { total, byBarber };
+        const byMonth = Array.from(byMonthMap.entries()).map(([month, amount]) => ({ month, amount }));
+
+        return { total, byBarber, byMonth };
     }
 }
 

@@ -141,6 +141,35 @@ class EarningsRepository {
         return data || [];
     }
 
+    async createWalkIn(barberId: string, amount: number, date: string, note?: string) {
+        const { data, error } = await supabase
+            .from('earnings')
+            .insert({
+                barber_id: barberId,
+                amount,
+                date,
+                note,
+                type: 'walk_in'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async updateEarning(id: string, updates: { amount?: number; note?: string; date?: string }) {
+        const { data, error } = await supabase
+            .from('earnings')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
     /**
      * Get all earnings for a date range (all barbers)
      */

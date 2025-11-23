@@ -11,6 +11,8 @@ import RoleBasedHome from "./modules/home/components/RoleBasedHome";
 import ProfilePage from "./modules/profile/pages/ProfilePage";
 import ProtectedRoute from "./modules/auth/components/ProtectedRoute";
 import AppInitializer from "./modules/auth/components/AppInitializer";
+import FinancialDashboard from "./modules/financial/pages/FinancialDashboard";
+import BarberDashboard from "./modules/booking/pages/BarberDashboard";
 import setupAxios from "./config/setupAxios";
 
 // Setup axios interceptors
@@ -51,6 +53,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/barber/financial"
+            element={
+              <ProtectedRoute>
+                <FinancialDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/barber/dashboard"
+            element={
+              <ProtectedRoute>
+                <BarberDashboard />
               </ProtectedRoute>
             }
           />

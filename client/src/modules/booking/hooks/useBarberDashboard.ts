@@ -146,5 +146,6 @@ export function useBarberDashboard() {
         closeModal,
         openDeleteConfirm,
         closeDeleteConfirm,
+        fetchSchedule,
     };
 }

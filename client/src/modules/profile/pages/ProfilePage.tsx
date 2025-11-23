@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { setUser } from '../../auth/store/authSlice';
-import Header from '../../../shared/components/Header';
+import BarberLayout from '../../../components/layout/BarberLayout';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -134,9 +134,8 @@ export default function ProfilePage() {
   };
 
   return (
-    <>
-      <Header />
-      <div className="min-h-screen p-6 pt-24 bg-dark">
+    <BarberLayout>
+      <div className="min-h-screen p-6 bg-dark">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -305,6 +304,6 @@ export default function ProfilePage() {
         onConfirm={handleAvatarDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-    </>
+    </BarberLayout>
   );
 }

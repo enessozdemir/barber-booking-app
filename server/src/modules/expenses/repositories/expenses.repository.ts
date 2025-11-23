@@ -86,6 +86,35 @@ class ExpensesRepository {
     }
 
     /**
+     * Get all expenses by date (all barbers, all types)
+     */
+    async getAllByDate(date: string): Promise<Expense[]> {
+        const { data, error } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('date', date)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    /**
+     * Get all expenses by date range (all barbers, all types)
+     */
+    async getAllByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
+        const { data, error } = await supabase
+            .from('expenses')
+            .select('*')
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    /**
      * Get business expenses by date
      */
     async getBusinessByDate(date: string): Promise<Expense[]> {

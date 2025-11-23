@@ -32,6 +32,22 @@ class EarningsController {
     });
 
     /**
+     * Update an earning
+     * PATCH /api/earnings/:id
+     */
+    updateEarning = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { id } = req.params;
+        const { amount, note, date } = req.body;
+
+        const earning = await earningsService.updateEarning(id, { amount, note, date });
+
+        res.status(200).json({
+            success: true,
+            data: { earning },
+        });
+    });
+
+    /**
      * Get daily earning summary
      * GET /api/earnings/daily/:date
      */
@@ -109,6 +125,21 @@ class EarningsController {
         res.status(200).json({
             success: true,
             data: summary,
+        });
+    });
+
+    /**
+     * Get business earnings list
+     * GET /api/earnings/business/items/:date
+     */
+    getBusinessEarnings = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { date } = req.params;
+
+        const items = await earningsService.getBusinessEarnings(date);
+
+        res.status(200).json({
+            success: true,
+            data: { items },
         });
     });
 
