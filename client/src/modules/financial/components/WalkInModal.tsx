@@ -45,8 +45,12 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate }:
       setDate(new Date().toISOString().split('T')[0]);
       onSuccess();
       onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Bir hata oluştu');
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        toast.error(error.response?.data?.message || 'Bir hata oluştu');
+      } else {
+        toast.error('Bir hata oluştu');
+      }
     } finally {
       setLoading(false);
     }

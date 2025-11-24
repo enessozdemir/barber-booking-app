@@ -54,7 +54,7 @@ export default function BarberSidebar() {
         <div className="p-6 border-b border-white/10">
           <Link
             to="/home"
-            className="text-xl font-bold text-white hover:text-blue-400 transition-colors inline-block"
+            className="text-xl font-bold text-white hover:opacity-80 transition-all inline-block"
             onClick={() => setIsOpen(false)}
           >
             Mühendis Berber
