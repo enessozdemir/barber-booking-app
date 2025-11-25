@@ -43,6 +43,27 @@ Mühendis Berber is a modern, full-stack web application designed to streamline 
 - **Package Manager:** [pnpm](https://pnpm.io/)
 - **Monorepo Management:** pnpm workspaces
 - **Development:** Concurrently (running client & server together)
+- **Testing:** Vitest (Client), Jest (Server)
+
+## 🧪 Testing
+
+### Client-Side Testing
+We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for client-side testing.
+
+To run client tests:
+```bash
+cd client
+pnpm test
+```
+
+### Server-Side Testing
+We use [Jest](https://jestjs.io/) and [Supertest](https://github.com/ladjs/supertest) for server-side testing.
+
+To run server tests:
+```bash
+cd server
+pnpm test
+```
 
 ## 📦 Installation & Setup
 

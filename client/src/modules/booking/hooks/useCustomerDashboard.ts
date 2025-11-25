@@ -5,18 +5,7 @@ import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import { toast } from 'react-toastify';
 import { getCurrentDateString } from '../../../shared/utils/timeSlots';
 
-interface Barber {
-    id: string;
-    active: boolean;
-    created_at: string;
-    users: {
-        id: string;
-        full_name: string;
-        phone: string;
-        email: string;
-    };
-    avatar_url?: string | null;
-}
+import type { Barber } from '../../../types/barber';
 
 export function useCustomerDashboard() {
     const { booking, fetchBarbers, selectBarber, fetchAvailableSlots, createBooking, fetchMyBookings, cancelBooking } = useBooking();

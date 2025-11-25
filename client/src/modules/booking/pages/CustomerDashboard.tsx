@@ -1,7 +1,9 @@
 import Header from '../../../shared/components/Header';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
 import { useCustomerDashboard } from '../hooks/useCustomerDashboard';
-import { formatPhoneNumber, getBarberInitials } from '../../../shared/utils/formatters';
+import BarberList from '../components/BarberList';
+import BookingForm from '../components/BookingForm';
+import MyBookingsList from '../components/MyBookingsList';
 
 export default function CustomerDashboard() {
   const {
@@ -35,351 +37,85 @@ export default function CustomerDashboard() {
     <>
       <Header />
       <div className="min-h-screen p-6 pt-24 bg-dark">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-            Hoş geldiniz, {authState.user?.full_name}!
-          </h1>
-          <p className="text-sm sm:text-base text-gray-400">Randevu oluşturun veya mevcut randevularınızı görüntüleyin</p>
-        </div>
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+              Hoş geldiniz, {authState.user?.full_name}!
+            </h1>
+            <p className="text-sm sm:text-base text-gray-400">Randevu oluşturun veya mevcut randevularınızı görüntüleyin</p>
+          </div>
 
-        {/* Tabs */}
-        <div className="grid grid-cols-2 sm:flex sm:justify-start gap-3 mb-6 sm:mb-8">
-          <button
-            onClick={() => setActiveTab('book')}
-            className={`px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer text-sm sm:text-base sm:w-auto ${
-              activeTab === 'book'
-                ? 'bg-secondary shadow-lg'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
-          >
-            Randevu Al
-          </button>
-          <button
-            onClick={() => setActiveTab('my-bookings')}
-            className={`px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all text-white cursor-pointer text-sm sm:text-base sm:w-auto ${
-              activeTab === 'my-bookings'
-                ? 'bg-secondary shadow-lg'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
-          >
-            Randevularım
-          </button>
-        </div>
+          {/* Tabs */}
+          <div className="grid grid-cols-2 sm:flex sm:justify-start gap-3 mb-6 sm:mb-8">
+            <button
+              onClick={() => setActiveTab('book')}
+              className={`px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all text-white cursor-pointer text-sm sm:text-base sm:w-auto ${
+                activeTab === 'book'
+                  ? 'bg-secondary shadow-lg'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              Randevu Al
+            </button>
+            <button
+              onClick={() => setActiveTab('my-bookings')}
+              className={`px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all text-white cursor-pointer text-sm sm:text-base sm:w-auto ${
+                activeTab === 'my-bookings'
+                  ? 'bg-secondary shadow-lg'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              Randevularım
+            </button>
+          </div>
 
-        {/* Book Tab */}
-        {activeTab === 'book' && (
-          <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'grid grid-cols-1 lg:grid-cols-12 gap-6' : ''}`}>
-            {/* Barber List */}
-            <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'lg:col-span-4' : 'w-full'}`}>
-              <div className="bg-navy rounded-xl p-4 sm:p-6 shadow-xl">
-                <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Berberler</h2>
-                {booking.loading ? (
-                  <p className="text-gray-400">Yükleniyor...</p>
-                ) : booking.barbers.length === 0 ? (
-                  <p className="text-gray-400">Aktif berber bulunamadı</p>
-                ) : (
-                  <div className={`grid gap-4 ${showBookingForm && booking.selectedBarber ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                    {(!showBookingForm || !booking.selectedBarber ? booking.barbers : booking.barbers.filter(b => b.id === booking.selectedBarber?.id)).map((barber) => (
-                      <div
-                        key={barber.id}
-                        onClick={() => handleBarberSelect(barber)}
-                        className={`rounded-xl p-4 sm:p-6 shadow-xl cursor-pointer hover:shadow-lg transition-all flex flex-row md:flex-col items-center justify-between md:justify-center text-left md:text-center gap-4 ${
-                          booking.selectedBarber?.id === barber.id
-                            ? 'bg-secondary text-white'
-                            : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                        }`}
-                      >
-                        {/* Info (Left on mobile, Bottom on desktop) */}
-                        <div className="flex flex-col order-1 md:order-2">
-                          <h3 className="font-semibold text-base sm:text-lg mb-1 md:mb-2">{barber.users.full_name}</h3>
-                          <p className="text-xs sm:text-sm opacity-80">{formatPhoneNumber(barber.users.phone)}</p>
-                        </div>
+          {/* Book Tab */}
+          {activeTab === 'book' && (
+            <div className={`transition-all duration-500 ${showBookingForm && booking.selectedBarber ? 'grid grid-cols-1 lg:grid-cols-12 gap-6' : ''}`}>
+              {/* Barber List */}
+              <BarberList
+                loading={booking.loading}
+                barbers={booking.barbers}
+                selectedBarber={booking.selectedBarber}
+                showBookingForm={showBookingForm}
+                onBarberSelect={handleBarberSelect}
+              />
 
-                        {/* Avatar (Right on mobile, Top on desktop) */}
-                        <div 
-                          className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white font-bold text-xl sm:text-2xl overflow-hidden order-2 md:order-1 ${
-                            booking.selectedBarber?.id === barber.id ? 'bg-white/20' : 'bg-secondary'
-                          }`}
-                        >
-                          {barber.avatar_url ? (
-                            <img 
-                              src={barber.avatar_url} 
-                              alt={barber.users.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            getBarberInitials(barber.users.full_name)
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Booking Form */}
-            {showBookingForm && booking.selectedBarber && (
-              <div className="lg:col-span-8">
-                <div className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-xl">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl sm:text-2xl font-bold text-white">
-                      Randevu Oluştur - {booking.selectedBarber.users.full_name}
-                    </h2>
-                    <button
-                      onClick={closeBookingForm}
-                      className="text-gray-400 hover:text-white transition-all"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <form onSubmit={handleBookingSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-gray-300 mb-2">Tarih</label>
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => handleDateChange(e.target.value)}
-                        min={minDate}
-                        onKeyDown={(e) => e.preventDefault()}
-                        className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
-                        required
-                      />
-                    </div>
-
-                    {selectedDate && (
-                      <div>
-                        <label className="block text-gray-300 mb-2">Saat</label>
-                        {booking.availableSlots.length > 0 ? (
-                <div className="space-y-4">
-                  {/* Person Count Selector */}
-                  <div className="bg-gray-700/50 p-3 sm:p-4 rounded-lg border border-gray-600">
-                    <label className="block text-gray-300 mb-1 sm:mb-2 font-medium text-sm sm:text-base">Kişi Sayısı</label>
-                    <div className="flex gap-2 mt-2">
-                      {[1, 2, 3, 4].map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => {
-                            setPersonCount(n);
-                            setSelectedTime('');
-                          }}
-                          className={`flex-1 px-3 py-2 rounded-lg font-semibold transition-all text-base sm:text-lg ${personCount === n ? 'bg-secondary text-white' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-400 mt-3">
-                      * Seçtiğiniz kişi sayısına göre ardışık {personCount} slot otomatik rezerve edilecektir.
-                    </p>
-                  </div>
-
-                  <div className="booking-grid pr-2">
-                    <style>{`
-                      .booking-grid {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 0.5rem; /* gap-2 */
-                        --cols: 2;
-                      }
-                      @media (min-width: 640px) { .booking-grid { --cols: 3; } }
-                      @media (min-width: 768px) { .booking-grid { --cols: 4; } }
-                      
-                      .booking-slot {
-                        flex-grow: 1;
-                        /* Formula: ((100% + gap) * span) / cols - gap */
-                        width: calc( ((100% + 0.5rem) * var(--span)) / var(--cols) - 0.5rem );
-                        max-width: 100%;
-                      }
-                    `}</style>
-                    {booking.availableSlots.map((slot, index) => {
-                      // If slot is booked and not the start, don't render it (it's covered by the previous merged slot)
-                      if (!slot.available && slot.isStart === false) {
-                        return null;
-                      }
-
-                      const endTime = new Date(`2000-01-01T${slot.time}`);
-                      const durationMinutes = !slot.available && slot.span ? slot.span * 30 : 30;
-                      endTime.setMinutes(endTime.getMinutes() + durationMinutes);
-                      const endTimeStr = endTime.toTimeString().slice(0, 5);
-                      
-                      // Check if consecutive slots are available (only for available slots)
-                      let isConsecutiveAvailable = true;
-                      if (slot.available && personCount > 1) {
-                        for (let i = 0; i < personCount; i++) {
-                          const nextSlot = booking.availableSlots[index + i];
-                          if (!nextSlot || !nextSlot.available) {
-                            isConsecutiveAvailable = false;
-                            break;
-                          }
-                        }
-                      }
-
-                      const isDisabled = !slot.available || (personCount > 1 && !isConsecutiveAvailable);
-                      const span = !slot.available && slot.span ? slot.span : 1;
-                      
-                      // Determine if this slot or any consecutive slots are selected
-                      let isSelected = false;
-                      if (selectedTime) {
-                        const selectedIndex = booking.availableSlots.findIndex(s => s.time === selectedTime);
-                        if (selectedIndex !== -1 && slot.available) {
-                          // Check if this slot is within the selected range
-                          isSelected = index >= selectedIndex && index < selectedIndex + personCount;
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => setSelectedTime(slot.time)}
-                          disabled={isDisabled}
-                          className={`booking-slot px-3 py-2 rounded-lg font-semibold transition-all text-xs sm:text-sm border-2 ${
-                            isSelected
-                              ? 'bg-secondary text-white border-secondary'
-                              : !slot.available
-                              ? 'bg-red-800/40 border-red-600 text-red-300 cursor-not-allowed'
-                              : isDisabled
-                              ? 'bg-gray-900 border-gray-700 text-gray-600 cursor-not-allowed'
-                              : 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:border-gray-600'
-                          }`}
-                          style={{ '--span': span } as React.CSSProperties}
-                        >
-                          <span className="font-semibold text-xs sm:text-sm truncate w-full">{slot.time} - {endTimeStr}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-400">Bu tarihte uygun saat bulunamadı.</p>
+              {/* Booking Form */}
+              {showBookingForm && booking.selectedBarber && (
+                <BookingForm
+                  selectedBarber={booking.selectedBarber}
+                  selectedDate={selectedDate}
+                  selectedTime={selectedTime}
+                  notes={notes}
+                  personCount={personCount}
+                  minDate={minDate}
+                  availableSlots={booking.availableSlots}
+                  onDateChange={handleDateChange}
+                  onTimeSelect={setSelectedTime}
+                  onPersonCountChange={setPersonCount}
+                  onNotesChange={setNotes}
+                  onSubmit={handleBookingSubmit}
+                  onClose={closeBookingForm}
+                />
               )}
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-gray-300 mb-1 sm:mb-2 text-sm sm:text-base">Not (Opsiyonel)</label>
-                      <textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="w-full px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-700 text-white text-sm sm:text-base rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        rows={4}
-                        placeholder="Özel bir isteğiniz varsa buraya yazabilirsiniz..."
-                      />
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        type="submit"
-                        disabled={!selectedDate || !selectedTime}
-                        className={`w-full py-3 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${selectedDate && selectedTime ? 'bg-secondary' : 'bg-gray-700'}`}
-                      >
-                        Randevu Oluştur
-                      </button>
-                      <button
-                        type="button"
-                        onClick={closeBookingForm}
-                        className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all cursor-pointer"
-                      >
-                        İptal
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* My Bookings Tab */}
-        {activeTab === 'my-bookings' && (
-          <div className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-white">Randevularım</h2>
-              
-              {/* Filter Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: 'all', label: 'Tümü' },
-                  { id: 'pending', label: 'Beklemede' },
-                  { id: 'completed', label: 'Tamamlanmış' },
-                  { id: 'cancelled', label: 'İptal Edilen' },
-                ].map((filter) => (
-                  <button
-                    key={filter.id}
-                    onClick={() => setFilterStatus(filter.id as 'all' | 'completed' | 'pending' | 'cancelled')}
-                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                      filterStatus === filter.id
-                        ? 'bg-secondary'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
             </div>
+          )}
 
-            {booking.loading ? (
-              <p className="text-gray-400">Yükleniyor...</p>
-            ) : booking.myBookings.length === 0 ? (
-              <p className="text-gray-400">Henüz randevunuz bulunmuyor.</p>
-            ) : (
-              <div className="space-y-4">
-                {filteredBookings.length === 0 ? (
-                  <p className="text-gray-400 text-center py-4">Bu kategoride randevu bulunamadı.</p>
-                ) : (
-                  filteredBookings.map((b) => (
-                    <div
-                      key={b.id}
-                      className="bg-gray-700/50 rounded-lg p-4 flex justify-between items-center border border-gray-700 hover:border-gray-600 transition-all"
-                    >
-                    <div>
-                      <h3 className="font-semibold text-white text-lg">
-                        {b.barbers?.users.full_name}
-                      </h3>
-                      <p className="text-gray-300">
-                        {new Date(b.date).toLocaleDateString('tr-TR')} - {b.start_time.substring(0, 5)} - {b.end_time.substring(0, 5)}
-                      </p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Durum: <span className={`font-semibold ${
-                          b.status === 'confirmed' ? 'text-green-400' :
-                          b.status === 'pending' ? 'text-yellow-400' :
-                          b.status === 'completed' ? 'text-blue-400' :
-                          'text-red-400'
-                        }`}>
-                          {b.status === 'pending' ? 'Beklemede' :
-                           b.status === 'confirmed' ? 'Onaylandı' :
-                           b.status === 'completed' ? 'Tamamlandı' :
-                           'İptal Edildi'}
-                        </span>
-                      </p>
-                      {b.note && (
-                        <p className="text-sm text-gray-400 mt-1">Not: {b.note}</p>
-                      )}
-                    </div>
-                    {b.status === 'pending' && (
-                      <button
-                        onClick={() => handleCancelBooking(b.id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all cursor-pointer"
-                      >
-                        İptal Et
-                      </button>
-                    )}
-                  </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        )}
+          {/* My Bookings Tab */}
+          {activeTab === 'my-bookings' && (
+            <MyBookingsList
+              loading={booking.loading}
+              myBookings={booking.myBookings}
+              filteredBookings={filteredBookings}
+              filterStatus={filterStatus}
+              onFilterChange={setFilterStatus}
+              onCancelBooking={handleCancelBooking}
+            />
+          )}
+        </div>
       </div>
-    </div>
 
       {/* Confirm Modal */}
       <ConfirmModal

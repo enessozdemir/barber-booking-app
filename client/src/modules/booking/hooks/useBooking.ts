@@ -13,18 +13,7 @@ import {
 } from '../store/bookingSlice';
 import axios from 'axios';
 
-// Import Barber type from the slice
-type Barber = {
-    id: string;
-    active: boolean;
-    created_at: string;
-    users: {
-        id: string;
-        full_name: string;
-        phone: string;
-        email: string;
-    };
-};
+import type { Barber } from '../../../types/barber';
 
 export function useBooking() {
     const dispatch = useDispatch();

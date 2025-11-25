@@ -1,6 +1,7 @@
 import { AppError } from "../../auth/utils/AppError";
 import { BOOKING_ERRORS } from "../constants/errorCodes";
 import bookingRepository from "../repositories/booking.repository";
+import earningsRepository from "../../earnings/repositories/earnings.repository";
 
 // Time slot helpers
 const BUSINESS_HOURS = {
@@ -198,7 +199,19 @@ export async function updateBookingStatus(
     // If status is completed, keep existing price (undefined means don't update)
     const price = status === 'completed' ? undefined : null;
 
-    return bookingRepository.updateBookingStatus(bookingId, status, price);
+    const updatedBooking = await bookingRepository.updateBookingStatus(bookingId, status, price);
+
+    // If status is NOT completed, delete any existing earning record
+    if (status !== 'completed') {
+        try {
+            await earningsRepository.deleteByBookingId(bookingId);
+        } catch (error) {
+            // Log error but don't fail the request (record might not exist)
+            console.error('Failed to delete earning record:', error);
+        }
+    }
+
+    return updatedBooking;
 }
 
 // Update booking price
@@ -218,7 +231,25 @@ export async function updateBookingPrice(
         throw new AppError(BOOKING_ERRORS.UNAUTHORIZED_ACCESS, "Unauthorized access", 403);
     }
 
-    return bookingRepository.updateBookingPrice(bookingId, price);
+    const updatedBooking = await bookingRepository.updateBookingPrice(bookingId, price);
+
+    // If booking has a price and is completed, try to add/update earnings
+    if (price > 0 && updatedBooking.status === 'completed') {
+        try {
+            await earningsRepository.upsertByBookingId({
+                barber_id: barberId,
+                booking_id: bookingId,
+                amount: price,
+                date: updatedBooking.date,
+                type: 'booking'
+            });
+        } catch (earningError: any) {
+            // Log error but don't fail the booking update
+            console.error('Failed to create/update earning record:', earningError.message);
+        }
+    }
+
+    return updatedBooking;
 }
 
 // Reschedule booking

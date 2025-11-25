@@ -1,49 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export interface Barber {
-    id: string;
-    active: boolean;
-    created_at: string;
-    avatar_url?: string | null;
-    users: {
-        id: string;
-        full_name: string;
-        phone: string;
-        email: string;
-    };
-}
-
-interface TimeSlot {
-    time: string;
-    available: boolean;
-    status?: string | null;
-    span?: number;
-    isStart?: boolean;
-}
-
-interface Booking {
-    id: string;
-    customer_id: string;
-    barber_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    status: string;
-    note?: string;
-    price?: number;
-    created_at: string;
-    barbers?: {
-        id: string;
-        users: {
-            full_name: string;
-            phone: string;
-        };
-    };
-    customer?: {
-        full_name: string;
-        phone: string;
-    };
-}
+import type { Barber } from '../../../types/barber';
+import type { Booking, BookingSlot as TimeSlot } from '../../../types/booking';
 
 interface BookingState {
     barbers: Barber[];
