@@ -171,6 +171,23 @@ class EarningsRepository {
     }
 
     /**
+     * Get earning by ID
+     */
+    async getById(id: string): Promise<Earning | null> {
+        const { data, error } = await supabase
+            .from('earnings')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
+        }
+        return data;
+    }
+
+    /**
      * Get all earnings for a date range (all barbers)
      */
     async getAllByDateRange(startDate: string, endDate: string): Promise<EarningWithBarber[]> {

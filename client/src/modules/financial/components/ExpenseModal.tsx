@@ -109,7 +109,6 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate }
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Örn: 500"
               required
             />
           </div>

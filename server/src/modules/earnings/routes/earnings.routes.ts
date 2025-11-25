@@ -10,6 +10,7 @@ router.use(verifyToken);
 // Walk-in earnings
 router.post('/walk-in', earningsController.createWalkIn);
 router.patch('/:id', earningsController.updateEarning);
+router.delete('/:id', earningsController.deleteEarning);
 
 // Personal earnings summaries
 router.get('/daily/:date', earningsController.getDailySummary);

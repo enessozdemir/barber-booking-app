@@ -172,6 +172,28 @@ class EarningsController {
             data: summary,
         });
     });
+
+    /**
+     * Delete an earning
+     * DELETE /api/earnings/:id
+     */
+    deleteEarning = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const userId = (req as any).user.id;
+        const barber = await barberService.getBarberByUserId(userId);
+
+        if (!barber) {
+            return next(new AppError('ERROR', 'Barber profile not found', 404));
+        }
+
+        const { id } = req.params;
+
+        await earningsService.deleteEarning(id, barber.id);
+
+        res.status(200).json({
+            success: true,
+            message: 'Earning deleted successfully',
+        });
+    });
 }
 
 export default new EarningsController();

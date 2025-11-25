@@ -1,7 +1,7 @@
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import CustomerDashboard from '../../booking/pages/CustomerDashboard';
-import BarberDashboard from '../../booking/pages/BarberDashboard';
+import FinancialDashboard from '../../financial/pages/FinancialDashboard';
 
 export default function RoleBasedHome() {
   const user = useSelector((state: RootState) => state.auth.user);
@@ -12,7 +12,7 @@ export default function RoleBasedHome() {
 
   // Check if user is a barber
   if (user.role === 'barber') {
-    return <BarberDashboard />;
+    return <FinancialDashboard />;
   }
 
   // Default to customer dashboard

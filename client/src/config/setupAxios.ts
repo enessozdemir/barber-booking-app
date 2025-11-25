@@ -53,6 +53,7 @@ axios.interceptors.response.use(
             !shouldSkipRefresh
         ) {
             if (isRefreshing) {
+                console.log('[Axios] Token refresh already in progress, queuing request');
                 return new Promise(function (resolve, reject) {
                     failedQueue.push({ resolve, reject });
                 })
@@ -66,7 +67,9 @@ axios.interceptors.response.use(
 
             originalRequest._retry = true;
             isRefreshing = true;
+
             try {
+                console.log('[Axios] Attempting to refresh access token...');
                 // attempt refresh — backend reads HttpOnly cookie and rotates it; it returns new accessToken
                 const response = await axios.post(
                     "/auth/refresh",
@@ -74,6 +77,8 @@ axios.interceptors.response.use(
                     { withCredentials: true }
                 );
                 const { accessToken, user } = response.data;
+                console.log('[Axios] Token refresh successful');
+
                 store.dispatch(setAccessToken(accessToken));
                 if (user) {
                     store.dispatch(setUser(user));
@@ -84,9 +89,16 @@ axios.interceptors.response.use(
                 isRefreshing = false;
                 return axios(originalRequest);
             } catch (e) {
+                console.error('[Axios] Token refresh failed:', e);
                 processQueue(e, null);
                 isRefreshing = false;
                 store.dispatch(logoutAction());
+
+                // Redirect to login only if not already on login page
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+
                 return Promise.reject(e);
             }
         }
@@ -97,4 +109,5 @@ axios.interceptors.response.use(
 export default function setupAxios() {
     // Axios is already configured via interceptors above
     // This function is called to ensure the setup runs
+    console.log('[setupAxios] Axios interceptors configured');
 }

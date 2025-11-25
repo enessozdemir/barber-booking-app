@@ -22,8 +22,8 @@ export default function BarberSidebar() {
   };
 
   const menuItems = [
+    { path: '/home', label: 'Finans', icon: PiCurrencyCircleDollarBold },
     { path: '/barber/dashboard', label: 'Randevularım', icon: PiCalendarCheckBold },
-    { path: '/barber/financial', label: 'Finans', icon: PiCurrencyCircleDollarBold },
     { path: '/profile', label: 'Profil', icon: PiUserCircleBold },
   ];
 
