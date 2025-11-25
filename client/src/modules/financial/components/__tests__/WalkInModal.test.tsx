@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import WalkInModal from '../WalkInModal';
@@ -12,8 +12,12 @@ vi.mock('react-toastify', () => ({
   },
 }));
 
-vi.mock('axios');
-const mockedAxios = vi.mocked(axios);
+vi.mock('axios', () => ({
+  default: {
+    post: vi.fn(),
+    isAxiosError: vi.fn(),
+  },
+}));
 
 describe('WalkInModal', () => {
   const defaultProps = {
@@ -137,7 +141,7 @@ describe('WalkInModal', () => {
   });
 
   it('submits form successfully with valid data', async () => {
-    mockedAxios.post.mockResolvedValueOnce({ data: {} });
+    (axios.post as Mock).mockResolvedValueOnce({ data: {} });
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -151,7 +155,7 @@ describe('WalkInModal', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(mockedAxios.post).toHaveBeenCalledWith('/earnings/walk-in', {
+      expect(axios.post).toHaveBeenCalledWith('/earnings/walk-in', {
         amount: 150,
         date: expect.any(String),
         note: 'Test note',
@@ -164,7 +168,7 @@ describe('WalkInModal', () => {
   });
 
   it('submits without note when note is empty', async () => {
-    mockedAxios.post.mockResolvedValueOnce({ data: {} });
+    (axios.post as Mock).mockResolvedValueOnce({ data: {} });
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -175,7 +179,7 @@ describe('WalkInModal', () => {
     fireEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(mockedAxios.post).toHaveBeenCalledWith('/earnings/walk-in', {
+      expect(axios.post).toHaveBeenCalledWith('/earnings/walk-in', {
         amount: 150,
         date: expect.any(String),
         note: undefined,
@@ -191,8 +195,8 @@ describe('WalkInModal', () => {
         },
       },
     };
-    mockedAxios.post.mockRejectedValueOnce(errorResponse);
-    mockedAxios.isAxiosError.mockReturnValueOnce(true);
+    (axios.post as Mock).mockRejectedValueOnce(errorResponse);
+    (axios.isAxiosError as unknown as Mock).mockReturnValueOnce(true);
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -216,8 +220,8 @@ describe('WalkInModal', () => {
         data: {},
       },
     };
-    mockedAxios.post.mockRejectedValueOnce(errorResponse);
-    mockedAxios.isAxiosError.mockReturnValueOnce(true);
+    (axios.post as Mock).mockRejectedValueOnce(errorResponse);
+    (axios.isAxiosError as unknown as Mock).mockReturnValueOnce(true);
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -233,8 +237,8 @@ describe('WalkInModal', () => {
   });
 
   it('handles non-axios error', async () => {
-    mockedAxios.post.mockRejectedValueOnce(new Error('Network error'));
-    mockedAxios.isAxiosError.mockReturnValueOnce(false);
+    (axios.post as Mock).mockRejectedValueOnce(new Error('Network error'));
+    (axios.isAxiosError as unknown as Mock).mockReturnValueOnce(false);
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -250,7 +254,7 @@ describe('WalkInModal', () => {
   });
 
   it('disables submit button while loading', async () => {
-    mockedAxios.post.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+    (axios.post as Mock).mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -274,7 +278,7 @@ describe('WalkInModal', () => {
   });
 
   it('resets form after successful submission', async () => {
-    mockedAxios.post.mockResolvedValueOnce({ data: {} });
+    (axios.post as Mock).mockResolvedValueOnce({ data: {} });
     
     render(<WalkInModal {...defaultProps} />);
     
@@ -292,6 +296,6 @@ describe('WalkInModal', () => {
     });
     
     // Form should be reset (though modal will close, we can check the internal state was reset)
-    expect(mockedAxios.post).toHaveBeenCalled();
+    expect(axios.post).toHaveBeenCalled();
   });
 });
