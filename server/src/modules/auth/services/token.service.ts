@@ -54,16 +54,19 @@ export async function rotateRefreshToken(
 ) {
   if (!userId) throw new Error("userId required for rotateRefreshToken");
 
-  // insert new (hash will be stored by saveRefreshToken)
+  // Insert new token
   const newRow = await saveRefreshToken(newRaw, userId, undefined);
 
-  // find old
+  // Try to find and revoke old token (if exists)
   const old = await findValidRefreshToken(oldRaw);
-  if (!old) throw new Error("Old refresh token not found");
+  if (old) {
+    // Old token exists, revoke it
+    const now = new Date().toISOString();
+    const revokedOld = await tokenRepository.revokeRefreshTokenById(old.id, now);
+    return { newRow, old: revokedOld };
+  }
 
-  // mark old revoked
-  const now = new Date().toISOString();
-  const revokedOld = await tokenRepository.revokeRefreshTokenById(old.id, now);
-
-  return { newRow, old: revokedOld };
+  // Old token doesn't exist - that's okay, just return new token
+  // This can happen when switching between different user accounts
+  return { newRow, old: null };
 }

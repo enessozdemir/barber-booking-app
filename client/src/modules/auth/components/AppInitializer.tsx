@@ -17,7 +17,8 @@ export default function AppInitializer() {
     };
 
     initializeAuth();
-  }, [tryRefreshToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run on mount
 
   return null;
 }

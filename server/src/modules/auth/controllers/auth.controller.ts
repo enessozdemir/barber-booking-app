@@ -149,3 +149,26 @@ export const updateProfile = catchAsync(async (req: Request, res: Response) => {
     message: "Profil başarıyla güncellendi"
   });
 });
+
+export const changePassword = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Oturum açmanız gerekli'
+      }
+    });
+    return;
+  }
+
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+
+  await authService.changePassword(userId, oldPassword, newPassword, confirmPassword);
+
+  res.status(200).json({
+    message: "Şifre başarıyla değiştirildi"
+  });
+});
+

@@ -237,3 +237,79 @@ export async function updateUserProfile(userId: string, data: { full_name?: stri
 
   return updatedUser;
 }
+
+export async function changePassword(
+  userId: string,
+  oldPassword: string,
+  newPassword: string,
+  confirmPassword: string
+) {
+  // Validate input
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    throw new AppError("MISSING_FIELDS", "Tüm alanlar doldurulmalıdır", 400);
+  }
+
+  // Check if new passwords match
+  if (newPassword !== confirmPassword) {
+    throw new AppError("PASSWORDS_DO_NOT_MATCH", "Yeni şifreler eşleşmiyor", 400);
+  }
+
+  // Get user from database
+  const user = await authRepository.findUserById(userId);
+  if (!user) {
+    throw new AppError(AUTH_ERRORS.USER_NOT_FOUND, "Kullanıcı bulunamadı", 404);
+  }
+
+  // Verify old password
+  const isPasswordValid = await bcrypt.compare(oldPassword, user.password as string);
+  if (!isPasswordValid) {
+    throw new AppError("INVALID_OLD_PASSWORD", "Eski şifre hatalı", 401);
+  }
+
+  // Check if new password is same as old password
+  const isSameAsOld = await bcrypt.compare(newPassword, user.password as string);
+  if (isSameAsOld) {
+    throw new AppError("SAME_AS_OLD_PASSWORD", "Yeni şifre eski şifre ile aynı olamaz", 400);
+  }
+
+  // Check for sequential numbers (123456, 654321, etc.)
+  const hasSequentialNumbers = (password: string): boolean => {
+    // Check for ascending sequences (123, 234, 345, etc.)
+    for (let i = 0; i < password.length - 2; i++) {
+      const char1 = password.charCodeAt(i);
+      const char2 = password.charCodeAt(i + 1);
+      const char3 = password.charCodeAt(i + 2);
+
+      // Check if three consecutive characters are sequential numbers
+      if (
+        char1 >= 48 && char1 <= 57 && // is digit
+        char2 === char1 + 1 &&
+        char3 === char2 + 1
+      ) {
+        return true;
+      }
+
+      // Check for descending sequences (321, 432, 543, etc.)
+      if (
+        char1 >= 48 && char1 <= 57 && // is digit
+        char2 === char1 - 1 &&
+        char3 === char2 - 1
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (hasSequentialNumbers(newPassword)) {
+    throw new AppError("WEAK_PASSWORD", "Şifre ardışık sayılar içeremez", 400);
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  // Update password in database
+  await authRepository.updateUserPassword(userId, hashedPassword);
+
+  return true;
+}

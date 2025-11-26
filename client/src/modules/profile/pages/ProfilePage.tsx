@@ -4,6 +4,7 @@ import type { RootState } from '../../app/store';
 import { setUser } from '../../auth/store/authSlice';
 import BarberLayout from '../../../components/layout/BarberLayout';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -291,6 +293,25 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          {/* Security Section */}
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl mt-6">
+            <h2 className="text-xl font-bold text-white mb-4">Güvenlik</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-300 font-medium">Şifre</p>
+                  <p className="text-sm text-gray-400">Hesap şifrenizi değiştirin</p>
+                </div>
+                <button
+                  onClick={() => setShowChangePasswordModal(true)}
+                  className="px-6 py-2 bg-secondary text-white rounded-lg font-semibold hover:opacity-90 transition-all"
+                >
+                  Şifre Değiştir
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -303,6 +324,11 @@ export default function ProfilePage() {
         type="danger"
         onConfirm={handleAvatarDelete}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
       />
     </BarberLayout>
   );
