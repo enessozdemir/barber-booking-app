@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import Cookies from 'js-cookie';
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -37,12 +36,6 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const token = Cookies.get('token');
-    if (!token) {
-      toast.error('Yetkilendirme hatası: Token bulunamadı.');
-      return;
-    }
-
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       toast.error('Lütfen geçerli bir tutar girin');
@@ -67,8 +60,6 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate }
         category,
         description,
         type: 'business', // All expenses are business expenses
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       toast.success('Gider kaydedildi');

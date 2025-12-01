@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { setUser } from '../../auth/store/authSlice';
 import BarberLayout from '../../../components/layout/BarberLayout';
+import CustomerLayout from '../../../components/layout/CustomerLayout';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import axios from 'axios';
@@ -135,8 +136,10 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
+  const LayoutComponent = user?.role === 'barber' ? BarberLayout : CustomerLayout;
+
   return (
-    <BarberLayout>
+    <LayoutComponent>
       <div className="min-h-screen p-6 bg-dark">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -330,6 +333,6 @@ export default function ProfilePage() {
         isOpen={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
       />
-    </BarberLayout>
+    </LayoutComponent>
   );
 }

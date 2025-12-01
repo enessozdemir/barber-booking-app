@@ -42,7 +42,7 @@ export default function RegisterForm() {
         value={email}
         maxLength={35}
         setFunction={handleEmailChange}
-        placeholder="user@xyz.com"
+        placeholder="kullanici@xyz.com"
       />
 
       <PasswordInput

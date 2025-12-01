@@ -29,7 +29,7 @@ const ForgotPassword = () => {
           label="Email"
           value={email}
           setFunction={handleEmailChange}
-          placeholder="user@xyz.com"
+          placeholder="kullanici@xyz.com"
         />
 
         <div className="flex gap-2 mt-4">
