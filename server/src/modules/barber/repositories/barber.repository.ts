@@ -13,10 +13,12 @@ export class BarberRepository {
           id,
           full_name,
           phone,
-          email
+          email,
+          role
         )
       `)
             .eq("active", true)
+            .eq("users.role", "barber")
             .order("created_at", { ascending: true });
 
         if (error) throw error;

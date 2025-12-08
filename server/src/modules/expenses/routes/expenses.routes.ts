@@ -18,4 +18,7 @@ router.get('/business/items/:date', expensesController.getBusinessExpenses);
 router.get('/monthly/:year/:month', expensesController.getMonthlySummary);
 router.get('/yearly/:year', expensesController.getYearlySummary);
 
+// Barber-specific expenses
+router.get('/barber/:barberId/daily/:date', expensesController.getBarberExpenses);
+
 export default router;

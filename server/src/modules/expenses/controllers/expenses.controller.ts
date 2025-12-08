@@ -17,7 +17,7 @@ class ExpensesController {
             return next(new AppError('ERROR', 'Barber profile not found', 404));
         }
 
-        const { amount, date, category, description, type } = req.body;
+        const { amount, date, category, description, type, barberId } = req.body;
 
         if (!amount || !date || !category || !description || !type) {
             return next(new AppError('ERROR', 'All fields are required', 400));
@@ -28,7 +28,7 @@ class ExpensesController {
         }
 
         const expense = await expensesService.create({
-            barber_id: type === 'personal' ? barber.id : undefined,
+            barber_id: barberId || (type === 'personal' ? barber.id : undefined),
             amount,
             date,
             category,
@@ -179,6 +179,21 @@ class ExpensesController {
         } catch (error: any) {
             return next(new AppError('UNAUTHORIZED', error.message, 403));
         }
+    });
+
+    /**
+     * Get barber expenses
+     * GET /api/expenses/barber/:barberId/daily/:date
+     */
+    getBarberExpenses = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { barberId, date } = req.params;
+
+        const items = await expensesService.getBarberExpenses(barberId, date);
+
+        res.status(200).json({
+            success: true,
+            data: { items },
+        });
     });
 }
 

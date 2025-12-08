@@ -223,16 +223,11 @@ class EarningsService {
      * Delete an earning (only walk-in earnings can be deleted)
      */
     async deleteEarning(earningId: string, barberId: string): Promise<void> {
-        // First, get the earning to verify ownership and type
+        // First, get the earning to verify type
         const earning = await earningsRepository.getById(earningId);
 
         if (!earning) {
             throw new Error('Earning not found');
-        }
-
-        // Verify the earning belongs to the barber
-        if (earning.barber_id !== barberId) {
-            throw new Error('Unauthorized to delete this earning');
         }
 
         // Only allow deletion of walk-in earnings

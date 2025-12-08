@@ -69,6 +69,11 @@ export async function loginUser({
     throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
   }
 
+  // Check if user has a password set
+  if (!user.password) {
+    throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);
+  }
+
   const match = await bcrypt.compare(password, user.password as string);
   if (!match) {
     throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, "Invalid credentials", 401);

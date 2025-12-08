@@ -35,7 +35,6 @@ export default function ExpensesList({ expenses, onUpdate }: ExpensesListProps) 
     try {
       setDeletingId(expenseId);
       await axios.delete(`/expenses/${expenseId}`);
-      toast.success('Gider silindi');
       onUpdate();
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {

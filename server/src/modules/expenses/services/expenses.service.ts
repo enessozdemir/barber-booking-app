@@ -126,11 +126,7 @@ class ExpensesService {
             throw new Error('Expense not found');
         }
 
-        // Only allow deleting own expenses or business expenses
-        if (expense.barber_id && expense.barber_id !== barberId) {
-            throw new Error('Unauthorized to delete this expense');
-        }
-
+        // Allow any barber to delete any expense
         await expensesRepository.delete(id);
     }
 
@@ -174,6 +170,13 @@ class ExpensesService {
         const business = items.filter(i => i.type === 'business').reduce((sum, e) => sum + Number(e.amount), 0);
 
         return { personal, business, total, items };
+    }
+
+    /**
+     * Get barber expenses for a specific date
+     */
+    async getBarberExpenses(barberId: string, date: string): Promise<Expense[]> {
+        return await expensesRepository.getByBarberAndDate(barberId, date);
     }
 }
 

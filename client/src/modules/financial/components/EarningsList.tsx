@@ -10,14 +10,20 @@ interface Earning {
   note: string | null;
   booking_id: string | null;
   created_at: string;
+  barbers?: {
+    users: {
+      full_name: string;
+    };
+  };
 }
 
 interface EarningsListProps {
   earnings: Earning[];
   onUpdate: () => void;
+  showBarber?: boolean;
 }
 
-export default function EarningsList({ earnings, onUpdate }: EarningsListProps) {
+export default function EarningsList({ earnings, onUpdate, showBarber = false }: EarningsListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -42,7 +48,6 @@ export default function EarningsList({ earnings, onUpdate }: EarningsListProps) 
         await axios.patch(`/earnings/${earningId}`, { amount: price });
       }
       
-      toast.success('Fiyat güncellendi');
       setEditingId(null);
       onUpdate();
     } catch (error: unknown) {
@@ -73,7 +78,6 @@ export default function EarningsList({ earnings, onUpdate }: EarningsListProps) 
 
     try {
       await axios.delete(`/earnings/${deletingId}`);
-      toast.success('Gelir kaydı silindi');
       setDeletingId(null);
       onUpdate();
     } catch (error: unknown) {
@@ -104,7 +108,9 @@ export default function EarningsList({ earnings, onUpdate }: EarningsListProps) 
           <thead>
             <tr className="border-b border-gray-700">
               <th className="text-left py-3 px-4 text-gray-300 font-semibold">Tarih</th>
-              <th className="text-left py-3 px-4 text-gray-300 font-semibold">Not</th>
+              <th className="text-left py-3 px-4 text-gray-300 font-semibold">
+                {showBarber ? 'Berber' : 'Not'}
+              </th>
               <th className="text-right py-3 px-4 text-gray-300 font-semibold">Tutar</th>
               <th className="text-right py-3 px-4 text-gray-300 font-semibold">İşlem</th>
             </tr>
@@ -117,7 +123,10 @@ export default function EarningsList({ earnings, onUpdate }: EarningsListProps) 
                 </td>
 
                 <td className="py-3 px-4 text-gray-300 text-sm">
-                  {earning.note || '-'}
+                  {showBarber 
+                    ? (earning.barbers?.users?.full_name || '-')
+                    : (earning.note || '-')
+                  }
                 </td>
                 <td className="py-3 px-4 text-right">
                   {editingId === earning.id ? (

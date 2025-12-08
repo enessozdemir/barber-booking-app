@@ -17,13 +17,16 @@ class EarningsController {
             return next(new AppError('ERROR', 'Barber profile not found', 404));
         }
 
-        const { amount, date, note } = req.body;
+        const { amount, date, note, barberId } = req.body;
 
         if (!amount || !date) {
             return next(new AppError('ERROR', 'Amount and date are required', 400));
         }
 
-        const earning = await earningsService.createWalkIn(barber.id, amount, date, note);
+        // Use provided barberId or default to logged-in barber
+        const targetBarberId = barberId || barber.id;
+
+        const earning = await earningsService.createWalkIn(targetBarberId, amount, date, note);
 
         res.status(201).json({
             success: true,
@@ -192,6 +195,51 @@ class EarningsController {
         res.status(200).json({
             success: true,
             message: 'Earning deleted successfully',
+        });
+    });
+
+    /**
+     * Get barber daily summary
+     * GET /api/earnings/barber/:barberId/daily/:date
+     */
+    getBarberDailySummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { barberId, date } = req.params;
+
+        const summary = await earningsService.getDailySummary(barberId, date);
+
+        res.status(200).json({
+            success: true,
+            data: summary,
+        });
+    });
+
+    /**
+     * Get barber monthly summary
+     * GET /api/earnings/barber/:barberId/monthly/:year/:month
+     */
+    getBarberMonthlySummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { barberId, year, month } = req.params;
+
+        const summary = await earningsService.getMonthlySummary(barberId, parseInt(year), parseInt(month));
+
+        res.status(200).json({
+            success: true,
+            data: summary,
+        });
+    });
+
+    /**
+     * Get barber yearly summary
+     * GET /api/earnings/barber/:barberId/yearly/:year
+     */
+    getBarberYearlySummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const { barberId, year } = req.params;
+
+        const summary = await earningsService.getYearlySummary(barberId, parseInt(year));
+
+        res.status(200).json({
+            success: true,
+            data: summary,
         });
     });
 }

@@ -17,6 +17,11 @@ router.get('/daily/:date', earningsController.getDailySummary);
 router.get('/monthly/:year/:month', earningsController.getMonthlySummary);
 router.get('/yearly/:year', earningsController.getYearlySummary);
 
+// Barber-specific earnings
+router.get('/barber/:barberId/daily/:date', earningsController.getBarberDailySummary);
+router.get('/barber/:barberId/monthly/:year/:month', earningsController.getBarberMonthlySummary);
+router.get('/barber/:barberId/yearly/:year', earningsController.getBarberYearlySummary);
+
 // Business earnings summaries
 router.get('/business/daily/:date', earningsController.getBusinessDailySummary);
 router.get('/business/items/:date', earningsController.getBusinessEarnings);

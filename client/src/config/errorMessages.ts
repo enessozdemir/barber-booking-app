@@ -1,6 +1,6 @@
 export const ERROR_MESSAGES: Record<string, string> = {
     // Login
-    INVALID_CREDENTIALS: 'Telefon numarası veya şifre hatalı',
+    INVALID_CREDENTIALS: 'Lütfen giriş bilgilerinizi kontrol ediniz',
     MISSING_PHONE_OR_PASSWORD: 'Telefon numarası ve şifre gerekli',
 
     // Register

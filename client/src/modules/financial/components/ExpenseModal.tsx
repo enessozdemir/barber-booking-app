@@ -7,6 +7,7 @@ interface ExpenseModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialDate?: string;
+  barberId?: string | null;
 }
 
 const categories = [
@@ -19,7 +20,7 @@ const categories = [
   'Diğer',
 ];
 
-export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate }: ExpenseModalProps) {
+export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, barberId }: ExpenseModalProps) {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -59,10 +60,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate }
         date,
         category,
         description,
-        type: 'business', // All expenses are business expenses
+        type: barberId ? 'personal' : 'business', // Personal for barber-specific, business otherwise
+        barberId: barberId || undefined,
       });
 
-      toast.success('Gider kaydedildi');
       setAmount('');
       setCategory('');
       setDescription('');

@@ -7,9 +7,10 @@ interface WalkInModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialDate?: string;
+  barberId?: string | null;
 }
 
-export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate }: WalkInModalProps) {
+export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, barberId }: WalkInModalProps) {
   const [price, setPrice] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
@@ -37,9 +38,9 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate }:
         amount: priceNum,
         date,
         note: note.trim() || undefined,
+        barberId: barberId || undefined,
       });
 
-      toast.success('Müşteri kaydedildi');
       setPrice('');
       setNote('');
       setDate(new Date().toISOString().split('T')[0]);
