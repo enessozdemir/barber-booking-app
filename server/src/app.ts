@@ -17,21 +17,25 @@ dotenv.config();
 
 const app = express();
 
+// Trust Proxy - Required for running behind a proxy (like Railway/Heroku/Nginx)
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
+
+// CORS - Must be before rate limiter to handle 429 errors correctly
+app.use(cors(corsOptions));
 
 // Rate Limiting - more permissive in development
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Higher limit in dev
+    max: process.env.NODE_ENV === 'production' ? 1000 : 3000, // Increased limits
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests from this IP, please try again later.',
 });
 
 app.use(limiter);
-
-app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 

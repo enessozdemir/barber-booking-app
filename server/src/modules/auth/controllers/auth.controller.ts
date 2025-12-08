@@ -28,7 +28,7 @@ export const login = catchAsync(async (req: Request, res: Response) => {
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge,
   });
   res.json({ user, accessToken });
@@ -57,7 +57,7 @@ export const refresh = catchAsync(async (req: Request, res: Response) => {
     res.cookie("refreshToken", data.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge,
     });
   }
