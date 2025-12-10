@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
+import EditExpenseModal from './EditExpenseModal';
 
 interface Expense {
   id: string;
@@ -21,6 +22,7 @@ interface ExpensesListProps {
 export default function ExpensesList({ expenses, onUpdate }: ExpensesListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const handleDeleteClick = (expenseId: string) => {
     setConfirmDeleteId(expenseId);
@@ -45,6 +47,10 @@ export default function ExpensesList({ expenses, onUpdate }: ExpensesListProps) 
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleEditClick = (expense: Expense) => {
+    setEditingExpense(expense);
   };
 
   if (expenses.length === 0) {
@@ -87,13 +93,21 @@ export default function ExpensesList({ expenses, onUpdate }: ExpensesListProps) 
                 </span>
               </td>
               <td className="py-3 px-4 text-right">
-                <button
-                  onClick={() => handleDeleteClick(expense.id)}
-                  disabled={deletingId === expense.id}
-                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors disabled:opacity-50"
-                >
-                  {deletingId === expense.id ? 'Siliniyor...' : 'Sil'}
-                </button>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => handleEditClick(expense)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                  >
+                    Düzenle
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(expense.id)}
+                    disabled={deletingId === expense.id}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors disabled:opacity-50"
+                  >
+                    Sil
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -109,6 +123,16 @@ export default function ExpensesList({ expenses, onUpdate }: ExpensesListProps) 
         type="danger"
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      <EditExpenseModal
+        isOpen={!!editingExpense}
+        expense={editingExpense}
+        onClose={() => setEditingExpense(null)}
+        onSuccess={() => {
+          setEditingExpense(null);
+          onUpdate();
+        }}
       />
     </div>
   );

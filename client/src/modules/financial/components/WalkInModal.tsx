@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -15,6 +15,7 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, b
   const [note, setNote] = useState('');
   const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const priceInputRef = useRef<HTMLInputElement>(null);
 
   // Update date when initialDate changes or modal opens
   useEffect(() => {
@@ -22,6 +23,28 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, b
       setDate(initialDate);
     }
   }, [isOpen, initialDate]);
+
+  // Auto-focus price input when modal opens
+  useEffect(() => {
+    if (isOpen && priceInputRef.current) {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        priceInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isOpen, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +94,7 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, b
               Fiyat (₺) <span className="text-red-500">*</span>
             </label>
             <input
+              ref={priceInputRef}
               type="number"
               step="0.01"
               min="0"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -10,13 +10,20 @@ interface ExpenseModalProps {
   barberId?: string | null;
 }
 
+interface Barber {
+  id: string;
+  users: {
+    full_name: string;
+  };
+}
+
 const categories = [
+  'Yemek',
   'Kira',
-  'Elektrik',
-  'Su',
+  'Fatura',
   'İnternet',
   'Malzeme',
-  'Maaş',
+  'Avans',
   'Diğer',
 ];
 
@@ -26,6 +33,9 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(initialDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }));
   const [loading, setLoading] = useState(false);
+  const [selectedBarberId, setSelectedBarberId] = useState<string>('');
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   // Update date when initialDate changes or modal opens
   useEffect(() => {
@@ -33,6 +43,44 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
       setDate(initialDate);
     }
   }, [isOpen, initialDate]);
+
+  // Auto-focus amount input when modal opens
+  useEffect(() => {
+    if (isOpen && amountInputRef.current) {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isOpen, onClose]);
+
+  // Fetch barbers list for advance payments
+  useEffect(() => {
+    const fetchBarbers = async () => {
+      try {
+        const response = await axios.get('/barbers');
+        setBarbers(response.data.barbers || []);
+      } catch (error) {
+        console.error('Failed to fetch barbers:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchBarbers();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,25 +96,46 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
       return;
     }
 
-    if (!description.trim()) {
-      toast.error('Lütfen açıklama girin');
-      return;
+    // For advance payments, require barber selection
+    if (category === 'Avans') {
+      if (!selectedBarberId) {
+        toast.error('Lütfen berber seçin');
+        return;
+      }
+    } else {
+      // For other categories, require description
+      if (!description.trim()) {
+        toast.error('Lütfen açıklama girin');
+        return;
+      }
     }
 
     try {
       setLoading(true);
+      
+      // For advance payments, use barber name as description
+      let finalDescription = description;
+      let finalBarberId = barberId;
+      
+      if (category === 'Avans') {
+        const selectedBarber = barbers.find(b => b.id === selectedBarberId);
+        finalDescription = selectedBarber ? selectedBarber.users.full_name : 'Avans';
+        finalBarberId = selectedBarberId;
+      }
+      
       await axios.post('/expenses', {
         amount: parseFloat(amount),
         date,
         category,
-        description,
-        type: barberId ? 'personal' : 'business', // Personal for barber-specific, business otherwise
-        barberId: barberId || undefined,
+        description: finalDescription,
+        type: barberId ? 'personal' : 'business',
+        barberId: finalBarberId || undefined,
       });
 
       setAmount('');
       setCategory('');
       setDescription('');
+      setSelectedBarberId('');
       setDate(new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }));
       onSuccess();
       onClose();
@@ -95,6 +164,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
               Tutar (₺) <span className="text-red-500">*</span>
             </label>
             <input
+              ref={amountInputRef}
               type="number"
               step="0.01"
               min="0"
@@ -125,20 +195,41 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
             </select>
           </div>
 
-          {/* Description Input */}
-          <div>
-            <label className="block text-gray-300 mb-2 font-medium">
-              Açıklama <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-              placeholder="Gider detayı"
-              rows={3}
-              required
-            />
-          </div>
+          {/* Conditional: Barber Selection for Avans OR Description for others */}
+          {category === 'Avans' ? (
+            <div>
+              <label className="block text-gray-300 mb-2 font-medium">
+                Berber <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedBarberId}
+                onChange={(e) => setSelectedBarberId(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                required
+              >
+                <option value="">Berber Seçiniz</option>
+                {barbers.map((barber) => (
+                  <option key={barber.id} value={barber.id}>
+                    {barber.users.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-gray-300 mb-2 font-medium">
+                Açıklama <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                placeholder="Gider detayı"
+                rows={3}
+                required
+              />
+            </div>
+          )}
 
           {/* Type Radio - Removed as per request, using prop passed from parent */}
           {/* <div>

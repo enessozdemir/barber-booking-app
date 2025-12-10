@@ -27,12 +27,17 @@ export interface MonthlyFinancialSummary {
     earnings: number;
     expenses: number;
     profit: number;
+    cash: number;
+    creditCard: number;
     byDay: Array<{
         date: string;
         earnings: number;
         expenses: number;
         profit: number;
+        cash: number;
+        creditCard: number;
     }>;
+    items?: Expense[]; // Expense items for detailed tracking
 }
 
 export interface YearlyFinancialSummary {
@@ -40,11 +45,15 @@ export interface YearlyFinancialSummary {
     earnings: number;
     expenses: number;
     profit: number;
+    cash: number;
+    creditCard: number;
     byMonth: Array<{
         month: number;
         earnings: number;
         expenses: number;
         profit: number;
+        cash: number;
+        creditCard: number;
     }>;
 }
 
@@ -60,6 +69,7 @@ export interface Earning {
 
 export interface Expense {
     id: string;
+    barber_id: string | null;
     amount: number;
     date: string;
     category: string;
@@ -379,6 +389,24 @@ export const fetchBusinessExpenses = createAsyncThunk(
     }
 );
 
+export const updateDailyPosAmount = createAsyncThunk(
+    'financial/updateDailyPosAmount',
+    async ({ date, amount }: { date: string; amount: number }, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await axios.post('/daily-stats/pos', { date, amount }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            return { date, amount: response.data.data.pos_amount };
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error)) {
+                return rejectWithValue(error.response?.data?.message || 'POS tutarı güncellenemedi');
+            }
+            return rejectWithValue('POS tutarı güncellenemedi');
+        }
+    }
+);
+
 const financialSlice = createSlice({
     name: 'financial',
     initialState,
@@ -603,6 +631,15 @@ const financialSlice = createSlice({
         builder.addCase(fetchBarberExpenses.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string;
+        })
+        // Update POS Amount
+        builder.addCase(updateDailyPosAmount.fulfilled, (state, action) => {
+            const { amount } = action.payload;
+            if (state.dailySummary) {
+                const total = state.dailySummary.earnings.total;
+                state.dailySummary.earnings.creditCard = Number(amount);
+                state.dailySummary.earnings.cash = total - Number(amount);
+            }
         });
     },
 });

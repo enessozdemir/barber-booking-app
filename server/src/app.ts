@@ -10,6 +10,7 @@ import bookingRoutes from './modules/booking/routes/booking.routes';
 import earningsRoutes from './modules/earnings/routes/earnings.routes';
 import expensesRoutes from './modules/expenses/routes/expenses.routes';
 import financialRoutes from './modules/financial/routes/financial.routes';
+import dailyStatsRoutes from './modules/financial/daily-stats/daily-stats.routes';
 import errorHandler from './middleware/errorHandler';
 import { corsOptions } from './config/cors';
 
@@ -48,6 +49,7 @@ app.use('/bookings', bookingRoutes);
 app.use('/earnings', earningsRoutes);
 app.use('/expenses', expensesRoutes);
 app.use('/financial', financialRoutes);
+app.use('/daily-stats', dailyStatsRoutes);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
