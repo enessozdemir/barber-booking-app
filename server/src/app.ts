@@ -24,10 +24,9 @@ app.set('trust proxy', 1);
 // Security Middleware
 app.use(helmet());
 
-// CORS - Must be before rate limiter to handle 429 errors correctly
 app.use(cors(corsOptions));
 
-// Rate Limiting - more permissive in development
+// Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: process.env.NODE_ENV === 'production' ? 1000 : 3000, // Increased limits

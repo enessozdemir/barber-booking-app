@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: muhendis-berber-server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - ./server/.env
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  client:
+    build:
+      context: .
+      dockerfile: ./client/Dockerfile
+    container_name: muhendis-berber-client
+    ports:
+      - "5173:5173"
+    environment:
+      - PORT=5173
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

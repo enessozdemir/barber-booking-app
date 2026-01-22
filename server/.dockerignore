@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+jest.config.ts
+coverage/
+
+# Development files
+.vscode/
+.idea/
+.DS_Store
+
+# Git
+.git/
+.gitignore
