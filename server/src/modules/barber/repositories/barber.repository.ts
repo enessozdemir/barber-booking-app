@@ -1,72 +1,69 @@
-import { supabase } from "../../../config/supabase";
+import { eq, and, asc } from "drizzle-orm";
+import { db } from "../../../config/db";
+import { barbers, users } from "../../../db/schema";
 
 export class BarberRepository {
-    async findActiveBarbers() {
-        const { data, error } = await supabase
-            .from("barbers")
-            .select(`
-        id,
-        active,
-        created_at,
-        avatar_url,
-        users!inner (
-          id,
-          full_name,
-          phone,
-          email,
-          role
-        )
-      `)
-            .eq("active", true)
-            .eq("users.role", "barber")
-            .order("created_at", { ascending: true });
+  async findActiveBarbers() {
+    const rows = await db
+      .select({
+        id: barbers.id,
+        active: barbers.active,
+        created_at: barbers.created_at,
+        avatar_url: barbers.avatar_url,
+        user: {
+          id: users.id,
+          full_name: users.full_name,
+          phone: users.phone,
+          email: users.email,
+          role: users.role,
+        },
+      })
+      .from(barbers)
+      .innerJoin(users, eq(barbers.id, users.id))
+      .where(and(eq(barbers.active, true), eq(users.role, "barber")))
+      .orderBy(asc(barbers.created_at));
 
-        if (error) throw error;
-        return data || [];
-    }
+    return rows.map((r) => ({
+      id: r.id,
+      active: r.active,
+      created_at: r.created_at,
+      avatar_url: r.avatar_url,
+      users: r.user,
+    }));
+  }
 
-    async findBarberById(barberId: string) {
-        const { data, error } = await supabase
-            .from("barbers")
-            .select(`
-        id,
-        active,
-        created_at,
-        avatar_url,
-        users!inner (
-          id,
-          full_name,
-          phone,
-          email
-        )
-      `)
-            .eq("id", barberId)
-            .maybeSingle();
+  async findBarberById(barberId: string) {
+    const [row] = await db
+      .select({
+        id: barbers.id,
+        active: barbers.active,
+        created_at: barbers.created_at,
+        avatar_url: barbers.avatar_url,
+        user: {
+          id: users.id,
+          full_name: users.full_name,
+          phone: users.phone,
+          email: users.email,
+        },
+      })
+      .from(barbers)
+      .innerJoin(users, eq(barbers.id, users.id))
+      .where(eq(barbers.id, barberId))
+      .limit(1);
 
-        if (error) throw error;
-        return data;
-    }
+    if (!row) return null;
+    return { ...row, users: row.user };
+  }
 
-    async findBarberByUserId(userId: string) {
-        const { data, error } = await supabase
-            .from("barbers")
-            .select("*")
-            .eq("id", userId)
-            .single();
+  async findBarberByUserId(userId: string) {
+    const [data] = await db.select().from(barbers).where(eq(barbers.id, userId)).limit(1);
+    return data ?? null;
+  }
 
-        if (error) return null;
-        return data;
-    }
-
-    async updateBarberAvatar(userId: string, avatarUrl: string | null) {
-        const { error } = await supabase
-            .from('barbers')
-            .update({ avatar_url: avatarUrl })
-            .eq('id', userId);
-
-        if (error) throw error;
-        return true;
-    }
+  async updateBarberAvatar(userId: string, avatarUrl: string | null) {
+    await db.update(barbers).set({ avatar_url: avatarUrl }).where(eq(barbers.id, userId));
+    return true;
+  }
 }
 
 export default new BarberRepository();

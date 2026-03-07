@@ -1,46 +1,48 @@
-import { supabase } from "../../../config/supabase";
+import { eq, gte, lte, desc, and } from "drizzle-orm";
+import { db } from "../../../config/db";
+import { dailyEarnings } from "../../../db/schema";
 
 export class DailyEarningsRepository {
-    async createEarning(earningData: any) {
-        const { data, error } = await supabase
-            .from("daily_earnings")
-            .insert(earningData)
-            .select()
-            .single();
+  async createEarning(earningData: {
+    barber_id: string;
+    date: string;
+    amount: number;
+    booking_id?: string | null;
+    source?: string | null;
+    notes?: string | null;
+  }) {
+    const [data] = await db.insert(dailyEarnings).values(earningData).returning();
+    if (!data) throw new Error("Failed to create daily earning");
+    return data;
+  }
 
-        if (error) throw error;
-        return data;
-    }
+  async findEarningsByBarber(barberId: string, date?: string) {
+    const whereCond = date
+      ? and(eq(dailyEarnings.barber_id, barberId), eq(dailyEarnings.date, date))
+      : eq(dailyEarnings.barber_id, barberId);
+    return db
+      .select()
+      .from(dailyEarnings)
+      .where(whereCond)
+      .orderBy(desc(dailyEarnings.date));
+  }
 
-    async findEarningsByBarber(barberId: string, date?: string) {
-        let query = supabase
-            .from("daily_earnings")
-            .select("*")
-            .eq("barber_id", barberId);
-
-        if (date) {
-            query = query.eq("date", date);
-        }
-
-        query = query.order("date", { ascending: false });
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        return data;
-    }
-
-    async findEarningsByBarberAndDateRange(barberId: string, startDate: string, endDate: string) {
-        const { data, error } = await supabase
-            .from("daily_earnings")
-            .select("amount")
-            .eq("barber_id", barberId)
-            .gte("date", startDate)
-            .lte("date", endDate);
-
-        if (error) throw error;
-        return data;
-    }
+  async findEarningsByBarberAndDateRange(
+    barberId: string,
+    startDate: string,
+    endDate: string
+  ) {
+    return db
+      .select({ amount: dailyEarnings.amount })
+      .from(dailyEarnings)
+      .where(
+        and(
+          eq(dailyEarnings.barber_id, barberId),
+          gte(dailyEarnings.date, startDate),
+          lte(dailyEarnings.date, endDate)
+        )
+      );
+  }
 }
 
 export default new DailyEarningsRepository();

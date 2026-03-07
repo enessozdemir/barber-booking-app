@@ -1,189 +1,147 @@
-import { supabase } from '../../../config/supabase';
+import { eq, gte, lte, and, desc, asc } from "drizzle-orm";
+import { db } from "../../../config/db";
+import { expenses } from "../../../db/schema";
 
 export interface Expense {
-    id: string;
-    barber_id: string | null;
-    amount: number;
-    date: string;
-    category: string;
-    description: string;
-    type: 'personal' | 'business';
-    created_at: string;
-    updated_at: string;
+  id: string;
+  barber_id: string | null;
+  amount: number;
+  date: string;
+  category: string;
+  description: string;
+  type: "personal" | "business";
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateExpenseDTO {
-    barber_id?: string;
-    amount: number;
-    date: string;
-    category: string;
-    description: string;
-    type: 'personal' | 'business';
+  barber_id?: string;
+  amount: number;
+  date: string;
+  category: string;
+  description: string;
+  type: "personal" | "business";
 }
 
 export interface UpdateExpenseDTO {
-    amount?: number;
-    category?: string;
-    description?: string;
-    type?: 'personal' | 'business';
+  amount?: number;
+  category?: string;
+  description?: string;
+  type?: "personal" | "business";
 }
 
 class ExpensesRepository {
-    /**
-     * Create a new expense record
-     */
-    async create(data: CreateExpenseDTO): Promise<Expense> {
-        const { data: expense, error } = await supabase
-            .from('expenses')
-            .insert({
-                barber_id: data.barber_id || null,
-                amount: data.amount,
-                date: data.date,
-                category: data.category,
-                description: data.description,
-                type: data.type,
-            })
-            .select()
-            .single();
+  async create(data: CreateExpenseDTO): Promise<Expense> {
+    const [expense] = await db
+      .insert(expenses)
+      .values({
+        barber_id: data.barber_id ?? null,
+        amount: data.amount,
+        date: data.date,
+        category: data.category,
+        description: data.description,
+        type: data.type,
+      })
+      .returning();
+    if (!expense) throw new Error("Failed to create expense");
+    return expense as Expense;
+  }
 
-        if (error) throw error;
-        return expense;
-    }
+  async getByBarberAndDate(barberId: string, date: string): Promise<Expense[]> {
+    const rows = await db
+      .select()
+      .from(expenses)
+      .where(and(eq(expenses.barber_id, barberId), eq(expenses.date, date)))
+      .orderBy(desc(expenses.created_at));
+    return rows as Expense[];
+  }
 
-    /**
-     * Get expenses by barber and date
-     */
-    async getByBarberAndDate(barberId: string, date: string): Promise<Expense[]> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('barber_id', barberId)
-            .eq('date', date)
-            .order('created_at', { ascending: false });
+  async getByBarberAndDateRange(
+    barberId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<Expense[]> {
+    const rows = await db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.barber_id, barberId),
+          gte(expenses.date, startDate),
+          lte(expenses.date, endDate)
+        )
+      )
+      .orderBy(asc(expenses.date));
+    return rows as Expense[];
+  }
 
-        if (error) throw error;
-        return data || [];
-    }
+  async getAllByDate(date: string): Promise<Expense[]> {
+    const rows = await db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.date, date))
+      .orderBy(desc(expenses.created_at));
+    return rows as Expense[];
+  }
 
-    /**
-     * Get expenses by barber and date range
-     */
-    async getByBarberAndDateRange(
-        barberId: string,
-        startDate: string,
-        endDate: string
-    ): Promise<Expense[]> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('barber_id', barberId)
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('date', { ascending: true });
+  async getAllByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
+    const rows = await db
+      .select()
+      .from(expenses)
+      .where(and(gte(expenses.date, startDate), lte(expenses.date, endDate)))
+      .orderBy(asc(expenses.date));
+    return rows as Expense[];
+  }
 
-        if (error) throw error;
-        return data || [];
-    }
+  async getBusinessByDate(date: string): Promise<Expense[]> {
+    const rows = await db
+      .select()
+      .from(expenses)
+      .where(and(eq(expenses.type, "business"), eq(expenses.date, date)))
+      .orderBy(desc(expenses.created_at));
+    return rows as Expense[];
+  }
 
-    /**
-     * Get all expenses by date (all barbers, all types)
-     */
-    async getAllByDate(date: string): Promise<Expense[]> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('date', date)
-            .order('created_at', { ascending: false });
+  async getBusinessByDateRange(
+    startDate: string,
+    endDate: string
+  ): Promise<Expense[]> {
+    const rows = await db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.type, "business"),
+          gte(expenses.date, startDate),
+          lte(expenses.date, endDate)
+        )
+      )
+      .orderBy(asc(expenses.date));
+    return rows as Expense[];
+  }
 
-        if (error) throw error;
-        return data || [];
-    }
+  async update(id: string, data: UpdateExpenseDTO): Promise<Expense> {
+    const [expense] = await db
+      .update(expenses)
+      .set({ ...data, updated_at: new Date().toISOString() })
+      .where(eq(expenses.id, id))
+      .returning();
+    if (!expense) throw new Error("Expense not found");
+    return expense as Expense;
+  }
 
-    /**
-     * Get all expenses by date range (all barbers, all types)
-     */
-    async getAllByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('date', { ascending: true });
+  async delete(id: string): Promise<void> {
+    await db.delete(expenses).where(eq(expenses.id, id));
+  }
 
-        if (error) throw error;
-        return data || [];
-    }
-
-    /**
-     * Get business expenses by date
-     */
-    async getBusinessByDate(date: string): Promise<Expense[]> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('type', 'business')
-            .eq('date', date)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        return data || [];
-    }
-
-    /**
-     * Get business expenses by date range
-     */
-    async getBusinessByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('type', 'business')
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('date', { ascending: true });
-
-        if (error) throw error;
-        return data || [];
-    }
-
-    /**
-     * Update an expense
-     */
-    async update(id: string, data: UpdateExpenseDTO): Promise<Expense> {
-        const { data: expense, error } = await supabase
-            .from('expenses')
-            .update(data)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return expense;
-    }
-
-    /**
-     * Delete an expense
-     */
-    async delete(id: string): Promise<void> {
-        const { error } = await supabase.from('expenses').delete().eq('id', id);
-        if (error) throw error;
-    }
-
-    /**
-     * Get expense by ID
-     */
-    async getById(id: string): Promise<Expense | null> {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-        if (error) {
-            if (error.code === 'PGRST116') return null;
-            throw error;
-        }
-        return data;
-    }
+  async getById(id: string): Promise<Expense | null> {
+    const [data] = await db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.id, id))
+      .limit(1);
+    return (data as Expense) ?? null;
+  }
 }
 
 export default new ExpensesRepository();

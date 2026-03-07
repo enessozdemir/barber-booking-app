@@ -1,77 +1,54 @@
-import { supabase } from "../../../config/supabase";
+import { eq, and, desc } from "drizzle-orm";
+import { db } from "../../../config/db";
+import { refreshTokens } from "../../../db/schema";
 
 export class TokenRepository {
-    async createRefreshToken(data: { user_id: string; token: string; expires_at: string; revoked: boolean }) {
-        const { data: result, error } = await supabase
-            .from("refresh_tokens")
-            .insert(data)
-            .select()
-            .maybeSingle();
+  async createRefreshToken(data: {
+    user_id: string;
+    token: string;
+    expires_at: string;
+    revoked: boolean;
+  }) {
+    const [result] = await db.insert(refreshTokens).values(data).returning();
+    return result ?? null;
+  }
 
-        if (error) throw error;
-        return result;
+  async findRefreshToken(tokenHash: string) {
+    const [data] = await db
+      .select()
+      .from(refreshTokens)
+      .where(and(eq(refreshTokens.token, tokenHash), eq(refreshTokens.revoked, false)))
+      .orderBy(desc(refreshTokens.created_at))
+      .limit(1);
+    return data ?? null;
+  }
+
+  async revokeRefreshTokenById(id: string, revokedAt: string) {
+    const [data] = await db
+      .update(refreshTokens)
+      .set({ revoked: true, revoked_at: revokedAt })
+      .where(eq(refreshTokens.id, id))
+      .returning();
+    return data ?? null;
+  }
+
+  async revokeAllForUser(userId: string, revokedAt: string) {
+    try {
+      const data = await db
+        .update(refreshTokens)
+        .set({ revoked: true, revoked_at: revokedAt })
+        .where(eq(refreshTokens.user_id, userId))
+        .returning();
+      return data;
+    } catch {
+      const data = await db
+        .update(refreshTokens)
+        .set({ revoked: true })
+        .where(eq(refreshTokens.user_id, userId))
+        .returning();
+      return data;
     }
-
-    async findRefreshToken(tokenHash: string) {
-        const { data, error } = await supabase
-            .from("refresh_tokens")
-            .select("*")
-            .eq("token", tokenHash)
-            .eq("revoked", false)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (error) throw error;
-        return data;
-    }
-
-    async revokeRefreshTokenById(id: string, revokedAt: string) {
-        try {
-            const { data, error } = await supabase
-                .from("refresh_tokens")
-                .update({ revoked: true, revoked_at: revokedAt })
-                .eq("id", id)
-                .select()
-                .maybeSingle();
-
-            if (error) throw error;
-            return data;
-        } catch (err: any) {
-            // Fallback for missing revoked_at column
-            const { data, error } = await supabase
-                .from("refresh_tokens")
-                .update({ revoked: true })
-                .eq("id", id)
-                .select()
-                .maybeSingle();
-
-            if (error) throw error;
-            return data;
-        }
-    }
-
-    async revokeAllForUser(userId: string, revokedAt: string) {
-        try {
-            const { data, error } = await supabase
-                .from("refresh_tokens")
-                .update({ revoked: true, revoked_at: revokedAt })
-                .eq("user_id", userId)
-                .select();
-
-            if (error) throw error;
-            return data;
-        } catch (err: any) {
-            const { data, error } = await supabase
-                .from("refresh_tokens")
-                .update({ revoked: true })
-                .eq("user_id", userId)
-                .select();
-
-            if (error) throw error;
-            return data;
-        }
-    }
+  }
 }
 
 export default new TokenRepository();
