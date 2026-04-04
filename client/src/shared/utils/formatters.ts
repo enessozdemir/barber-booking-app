@@ -28,3 +28,11 @@ export function getBarberInitials(name: string): string {
     }
     return name.substring(0, 2).toUpperCase();
 }
+
+/** Türkçe gruplamalı, kuruşsuz (tam lira) gösterim */
+export function formatTryInteger(amount: number): string {
+    return new Intl.NumberFormat('tr-TR', {
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+    }).format(Math.round(Number(amount)));
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { formatTryInteger } from '../../../shared/utils/formatters';
 import { toast } from 'react-toastify';
 
 interface Earning {
@@ -30,7 +31,7 @@ export default function EarningsList({ earnings, onUpdate, showBarber = false }:
 
   const handleEdit = (earning: Earning) => {
     setEditingId(earning.id);
-    setEditPrice(earning.amount.toString());
+    setEditPrice(String(Math.round(earning.amount)));
   };
 
   const handleSave = async (earningId: string, bookingId: string | null) => {
@@ -42,10 +43,10 @@ export default function EarningsList({ earnings, onUpdate, showBarber = false }:
 
     try {
       if (bookingId) {
-        await axios.patch(`/bookings/${bookingId}/price`, { price });
+        await axios.patch(`/bookings/${bookingId}/price`, { price: Math.round(price) });
       } else {
         // For walk-ins, use the earnings update endpoint
-        await axios.patch(`/earnings/${earningId}`, { amount: price });
+        await axios.patch(`/earnings/${earningId}`, { amount: Math.round(price) });
       }
       
       setEditingId(null);
@@ -132,7 +133,8 @@ export default function EarningsList({ earnings, onUpdate, showBarber = false }:
                   {editingId === earning.id ? (
                     <input
                       type="number"
-                      step="0.01"
+                      step={1}
+                      min={1}
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
                       className="w-24 px-2 py-1 bg-gray-700 text-white rounded text-right"
@@ -140,7 +142,7 @@ export default function EarningsList({ earnings, onUpdate, showBarber = false }:
                     />
                   ) : (
                     <span className="text-green-400 font-semibold">
-                      ₺{earning.amount.toFixed(2)}
+                      ₺{formatTryInteger(earning.amount)}
                     </span>
                   )}
                 </td>

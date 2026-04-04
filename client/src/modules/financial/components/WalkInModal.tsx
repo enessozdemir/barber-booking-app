@@ -58,12 +58,13 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, b
     try {
       setLoading(true);
       await axios.post('/earnings/walk-in', {
-        amount: priceNum,
+        amount: Math.round(priceNum),
         date,
         note: note.trim() || undefined,
         barberId: barberId || undefined,
       });
 
+      toast.success('Müşteri kaydedildi');
       setPrice('');
       setNote('');
       setDate(new Date().toISOString().split('T')[0]);
@@ -96,10 +97,11 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, b
             <input
               ref={priceInputRef}
               type="number"
-              step="0.01"
-              min="0"
+              step={1}
+              min={0}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+              placeholder="Örn: 150"
               className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
@@ -122,6 +124,7 @@ export default function WalkInModal({ isOpen, onClose, onSuccess, initialDate, b
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              placeholder="Örn: Saç kesimi"
               className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
               rows={3}
             />

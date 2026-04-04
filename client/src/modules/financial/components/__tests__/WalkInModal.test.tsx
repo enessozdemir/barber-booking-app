@@ -42,17 +42,17 @@ describe('WalkInModal', () => {
 
   it('renders all form fields', () => {
     render(<WalkInModal {...defaultProps} />);
-    
+    const today = new Date().toISOString().split('T')[0];
+
     expect(screen.getByPlaceholderText(/Örn: 150/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Örn: Saç kesimi/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue(/2025-11-25/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(today)).toBeInTheDocument();
   });
 
   it('initializes date with current date by default', () => {
     render(<WalkInModal {...defaultProps} />);
-    
-    const dateInput = screen.getByDisplayValue(/2025-11-25/) as HTMLInputElement;
     const today = new Date().toISOString().split('T')[0];
+    const dateInput = screen.getByDisplayValue(today) as HTMLInputElement;
     expect(dateInput.value).toBe(today);
   });
 
@@ -94,8 +94,8 @@ describe('WalkInModal', () => {
 
   it('updates date input value', () => {
     render(<WalkInModal {...defaultProps} />);
-    
-    const dateInput = screen.getByDisplayValue(/2025-11-25/) as HTMLInputElement;
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = screen.getByDisplayValue(today) as HTMLInputElement;
     fireEvent.change(dateInput, { target: { value: '2023-02-01' } });
     
     expect(dateInput.value).toBe('2023-02-01');

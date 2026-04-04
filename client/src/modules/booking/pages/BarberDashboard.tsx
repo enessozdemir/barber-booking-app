@@ -200,6 +200,8 @@ export default function BarberDashboard() {
                 </label>
                 <input
                   type="number"
+                  step={1}
+                  min={1}
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder={status === 'completed' ? "Fiyat girin" : "Sadece tamamlanan randevular için"}

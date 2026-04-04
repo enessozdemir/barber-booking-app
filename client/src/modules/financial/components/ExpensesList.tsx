@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import ConfirmModal from '../../../shared/components/ConfirmModal';
+import { formatTryInteger } from '../../../shared/utils/formatters';
 import EditExpenseModal from './EditExpenseModal';
 
 interface Expense {
@@ -89,7 +90,7 @@ export default function ExpensesList({ expenses, onUpdate }: ExpensesListProps) 
               </td>
               <td className="py-3 px-4 text-right">
                 <span className="text-red-400 font-semibold">
-                  ₺{expense.amount.toFixed(2)}
+                  ₺{formatTryInteger(expense.amount)}
                 </span>
               </td>
               <td className="py-3 px-4 text-right">

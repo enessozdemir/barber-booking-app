@@ -34,7 +34,7 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
   // Populate form when expense changes
   useEffect(() => {
     if (expense) {
-      setAmount(expense.amount.toString());
+      setAmount(String(Math.round(expense.amount)));
       setCategory(expense.category);
       setDescription(expense.description);
     }
@@ -85,7 +85,7 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
     try {
       setLoading(true);
       await axios.put(`/expenses/${expense.id}`, {
-        amount: parseFloat(amount),
+        amount: Math.round(amountNum),
         category,
         description,
       });
@@ -119,8 +119,8 @@ export default function EditExpenseModal({ isOpen, onClose, onSuccess, expense }
             <input
               ref={amountInputRef}
               type="number"
-              step="0.01"
-              min="0"
+              step={1}
+              min={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"

@@ -63,7 +63,7 @@ export function useBarberDashboard() {
     const handleSlotClick = useCallback((booking: Booking | undefined) => {
         if (!booking) return;
         setSelectedBooking(booking);
-        setPrice(booking.price?.toString() || '');
+        setPrice(booking.price != null ? String(Math.round(booking.price)) : '');
         setStatus(booking.status);
         setShowModal(true);
     }, []);
@@ -97,7 +97,9 @@ export function useBarberDashboard() {
 
             // Only update price if status is completed
             if (status === 'completed' && price && parseFloat(price) > 0) {
-                await axios.patch(`/bookings/${selectedBooking.id}/price`, { price: parseFloat(price) });
+                await axios.patch(`/bookings/${selectedBooking.id}/price`, {
+                    price: Math.round(parseFloat(price)),
+                });
             }
 
             toast.success('Randevu güncellendi');

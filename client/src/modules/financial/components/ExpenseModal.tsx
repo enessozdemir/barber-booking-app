@@ -124,7 +124,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
       }
       
       await axios.post('/expenses', {
-        amount: parseFloat(amount),
+        amount: Math.round(amountNum),
         date,
         category,
         description: finalDescription,
@@ -166,8 +166,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, initialDate, 
             <input
               ref={amountInputRef}
               type="number"
-              step="0.01"
-              min="0"
+              step={1}
+              min={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"

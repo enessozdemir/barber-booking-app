@@ -4,6 +4,7 @@ import { updateDailyPosAmount } from '../store/financialSlice';
 import { toast } from 'react-toastify';
 import { PiCreditCardBold, PiMoneyBold, PiXBold } from 'react-icons/pi';
 import type { AppDispatch } from '../../app/store';
+import { formatTryInteger } from '../../../shared/utils/formatters';
 
 interface EndDayModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ const EndDayModal: React.FC<EndDayModalProps> = ({ isOpen, onClose, date, totalE
 
   useEffect(() => {
     if (isOpen) {
-      setPosAmount(currentPosAmount > 0 ? currentPosAmount.toString() : '');
+      setPosAmount(currentPosAmount > 0 ? String(Math.round(currentPosAmount)) : '');
     }
   }, [isOpen, currentPosAmount]);
 
@@ -40,7 +41,7 @@ const EndDayModal: React.FC<EndDayModalProps> = ({ isOpen, onClose, date, totalE
 
     try {
       setLoading(true);
-      await dispatch(updateDailyPosAmount({ date, amount })).unwrap();
+      await dispatch(updateDailyPosAmount({ date, amount: Math.round(amount) })).unwrap();
       onClose();
     } catch (error) {
       toast.error(error as string || 'Bir hata oluştu');
@@ -72,7 +73,7 @@ const EndDayModal: React.FC<EndDayModalProps> = ({ isOpen, onClose, date, totalE
               <span>Toplam Gelir</span>
               <span>{new Date(date).toLocaleDateString('tr-TR')}</span>
             </div>
-            <div className="text-xl font-bold text-white">₺{totalEarnings.toFixed(2)}</div>
+            <div className="text-xl font-bold text-white">₺{formatTryInteger(totalEarnings)}</div>
           </div>
 
           <div>
@@ -83,6 +84,8 @@ const EndDayModal: React.FC<EndDayModalProps> = ({ isOpen, onClose, date, totalE
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₺</span>
               <input
                 type="number"
+                step={1}
+                min={0}
                 value={posAmount}
                 onChange={(e) => setPosAmount(e.target.value)}
                 className={`w-full bg-gray-900 border text-white rounded-lg pl-8 pr-4 py-2 outline-none transition-all placeholder:text-gray-600 ${
@@ -90,7 +93,7 @@ const EndDayModal: React.FC<EndDayModalProps> = ({ isOpen, onClose, date, totalE
                     ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' 
                     : 'border-gray-700 focus:ring-2 focus:ring-secondary'
                 }`}
-                placeholder="0.00"
+                placeholder="0"
                 autoFocus
               />
             </div>
@@ -106,7 +109,7 @@ const EndDayModal: React.FC<EndDayModalProps> = ({ isOpen, onClose, date, totalE
                 <span className="font-medium">Hesaplanan Nakit</span>
               </div>
               <div className="text-xl font-bold text-green-400">
-                ₺{calculatedCash < 0 ? '0.00' : calculatedCash.toFixed(2)}
+                ₺{formatTryInteger(calculatedCash < 0 ? 0 : calculatedCash)}
               </div>
             </div>
           </div>

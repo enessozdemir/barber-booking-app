@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../app/store';
 import { 
@@ -22,6 +22,12 @@ import EarningsList from '../components/EarningsList';
 import ExpensesList from '../components/ExpensesList';
 import DatePicker from '../../../shared/components/DatePicker';
 import EndDayModal from '../components/EndDayModal';
+import { formatTryInteger } from '../../../shared/utils/formatters';
+
+function normalizeExpenseCategory(category: string | undefined | null): string {
+  const t = category?.trim();
+  return t ? t : 'Kategorisiz';
+}
 
 export default function FinancialDashboard() {
   const dispatch = useDispatch<AppDispatch>();
@@ -37,6 +43,7 @@ export default function FinancialDashboard() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showEndDayModal, setShowEndDayModal] = useState(false);
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
+  const [businessMonthlyExpenseCategoryFilter, setBusinessMonthlyExpenseCategoryFilter] = useState('');
 
   const { 
     dailySummary,
@@ -98,6 +105,41 @@ export default function FinancialDashboard() {
   useEffect(() => {
     handleRefresh();
   }, [handleRefresh]);
+
+  useEffect(() => {
+    setBusinessMonthlyExpenseCategoryFilter('');
+  }, [selectedMonth, selectedYear]);
+
+  const businessMonthlyExpenseItems = useMemo(() => {
+    const items = monthlySummary?.items || [];
+    return [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [monthlySummary?.items]);
+
+  const businessMonthlyExpenseAggregates = useMemo(() => {
+    const totals = new Map<string, number>();
+    let grandTotal = 0;
+    for (const e of businessMonthlyExpenseItems) {
+      grandTotal += Number(e.amount);
+      const key = normalizeExpenseCategory(e.category);
+      totals.set(key, (totals.get(key) || 0) + Number(e.amount));
+    }
+    const sortedCategories = Array.from(totals.keys()).sort((a, b) => a.localeCompare(b, 'tr'));
+    return { totals, sortedCategories, grandTotal };
+  }, [businessMonthlyExpenseItems]);
+
+  const businessMonthlyFilteredExpenses = useMemo(() => {
+    if (!businessMonthlyExpenseCategoryFilter) return businessMonthlyExpenseItems;
+    return businessMonthlyExpenseItems.filter(
+      (e) => normalizeExpenseCategory(e.category) === businessMonthlyExpenseCategoryFilter
+    );
+  }, [businessMonthlyExpenseItems, businessMonthlyExpenseCategoryFilter]);
+
+  const businessMonthlyHeaderTotal = useMemo(() => {
+    if (!businessMonthlyExpenseCategoryFilter) {
+      return businessMonthlyExpenseAggregates.grandTotal;
+    }
+    return businessMonthlyExpenseAggregates.totals.get(businessMonthlyExpenseCategoryFilter) || 0;
+  }, [businessMonthlyExpenseAggregates, businessMonthlyExpenseCategoryFilter]);
 
   // Handle Enter key press to open modals
   useEffect(() => {
@@ -309,7 +351,7 @@ export default function FinancialDashboard() {
                   <PiTrendUpBold className="text-3xl text-green-400" />
                 </div>
                 <p className="text-3xl font-bold text-white">
-                  {loading ? '...' : `₺${totals.earnings.toFixed(2)}`}
+                  {loading ? '...' : `₺${formatTryInteger(totals.earnings)}`}
                 </p>
               </div>
             </div>
@@ -332,7 +374,7 @@ export default function FinancialDashboard() {
                      <div className="flex items-center gap-3 bg-green-900/40 px-6 py-3 rounded-2xl border border-green-700/30 shadow-inner">
                         <PiTrendUpBold className="text-3xl text-green-400" />
                         <p className="text-4xl font-bold text-white tracking-tight">
-                          {loading ? '...' : `₺${totals.earnings.toFixed(2)}`}
+                          {loading ? '...' : `₺${formatTryInteger(totals.earnings)}`}
                         </p>
                      </div>
                   </div>
@@ -346,7 +388,7 @@ export default function FinancialDashboard() {
                         </div>
                         <p className="text-green-200/70 text-xs font-medium uppercase mb-1">Nakit</p>
                         <p className="text-2xl font-bold text-white">
-                          {loading ? '...' : `₺${totals.cash.toFixed(2)}`}
+                          {loading ? '...' : `₺${formatTryInteger(totals.cash)}`}
                         </p>
                      </div>
 
@@ -357,7 +399,7 @@ export default function FinancialDashboard() {
                         </div>
                         <p className="text-green-200/70 text-xs font-medium uppercase mb-1">POS</p>
                         <p className="text-2xl font-bold text-white">
-                          {loading ? '...' : `₺${totals.creditCard.toFixed(2)}`}
+                          {loading ? '...' : `₺${formatTryInteger(totals.creditCard)}`}
                         </p>
                      </div>
                   </div>
@@ -385,7 +427,7 @@ export default function FinancialDashboard() {
                     <PiTrendDownBold className="text-3xl text-red-400" />
                   </div>
                   <p className="text-3xl font-bold text-white">
-                    {loading ? '...' : `₺${totals.expenses.toFixed(2)}`}
+                    {loading ? '...' : `₺${formatTryInteger(totals.expenses)}`}
                   </p>
                 </div>
 
@@ -395,7 +437,7 @@ export default function FinancialDashboard() {
                     <PiWalletBold className="text-3xl text-blue-400" />
                   </div>
                   <p className={`text-3xl font-bold ${totals.profit >= 0 ? 'text-white' : 'text-red-400'}`}>
-                    {loading ? '...' : `₺${totals.profit.toFixed(2)}`}
+                    {loading ? '...' : `₺${formatTryInteger(totals.profit)}`}
                   </p>
                 </div>
               </div>
@@ -494,7 +536,7 @@ export default function FinancialDashboard() {
                             >
                               {/* Tooltip */}
                               <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs font-bold py-1.5 px-2.5 rounded-lg whitespace-nowrap transition-opacity z-20 border border-gray-700 shadow-xl pointer-events-none">
-                                ₺{value.toFixed(2)}
+                                ₺{formatTryInteger(value)}
                                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 border-r border-b border-gray-700 rotate-45"></div>
                               </div>
                             </div>
@@ -519,72 +561,40 @@ export default function FinancialDashboard() {
             </div>
           )}
 
-          {/* Advance Payments Table - Only show in business view and monthly mode */}
+          {/* Aylık işletme: ayın gider satırları + kategori filtresi */}
           {financeViewMode === 'business' && viewMode === 'monthly' && (
             <div className="bg-gray-800 rounded-xl shadow-xl border border-gray-700 p-6 mt-8">
-              <h3 className="text-lg font-bold text-white mb-4">Avanslar</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-3 px-4 text-gray-300 font-medium">Berber</th>
-                      <th className="text-left py-3 px-4 text-gray-300 font-medium">Tarih</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">Miktar</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      // Use monthly summary items instead of expenses state
-                      const monthlyExpenses = monthlySummary?.items || [];
-                      
-                      // Filter advances and group by barber + date
-                      const advances = monthlyExpenses.filter(expense => expense.category === 'Avans');
-                      
-                      // Group by barber_id and date, sum amounts
-                      const groupedAdvances = advances.reduce((acc, advance) => {
-                        const key = `${advance.barber_id}_${advance.date}`;
-                        if (!acc[key]) {
-                          acc[key] = {
-                            barber_id: advance.barber_id,
-                            date: advance.date,
-                            amount: 0
-                          };
-                        }
-                        acc[key].amount += Number(advance.amount);
-                        return acc;
-                      }, {} as Record<string, { barber_id: string | null; date: string; amount: number }>);
-
-                      const groupedArray = Object.values(groupedAdvances).sort((a, b) => 
-                        new Date(b.date).getTime() - new Date(a.date).getTime()
-                      );
-
-                      return groupedArray.length > 0 ? (
-                        groupedArray.map((advance, index) => {
-                          const barber = barbers.find(b => b.id === advance.barber_id);
-                          return (
-                            <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
-                              <td className="py-3 px-4 text-white">
-                                {barber ? barber.users.full_name : 'Bilinmeyen'}
-                              </td>
-                              <td className="py-3 px-4 text-gray-300">
-                                {new Date(advance.date).toLocaleDateString('tr-TR')}
-                              </td>
-                              <td className="py-3 px-4 text-right text-white font-medium">
-                                ₺{advance.amount.toFixed(2)}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={3} className="py-8 text-center text-gray-500">
-                            Bu ay avans kaydı bulunmuyor
-                          </td>
-                        </tr>
-                      );
-                    })()}
-                  </tbody>
-                </table>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                <div className="flex flex-wrap items-center gap-3 gap-y-2">
+                  <h3 className="text-lg font-bold text-white">Giderler</h3>
+                  <div className="inline-flex items-center gap-2 rounded-lg border-2 border-red-500/80 bg-red-950/50 px-3 py-2 shadow-sm shadow-red-950/40">
+                    <span className="text-xs font-medium text-red-200/90">Toplam</span>
+                    <span className="text-base font-bold tabular-nums text-red-100">
+                      ₺{formatTryInteger(businessMonthlyHeaderTotal)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 flex-1 lg:max-w-md lg:justify-end">
+                  <label htmlFor="business-monthly-expense-category" className="text-sm text-gray-400 whitespace-nowrap">
+                    Kategori
+                  </label>
+                  <select
+                    id="business-monthly-expense-category"
+                    value={businessMonthlyExpenseCategoryFilter}
+                    onChange={(e) => setBusinessMonthlyExpenseCategoryFilter(e.target.value)}
+                    className="w-full sm:w-auto sm:min-w-52 px-4 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-secondary outline-none text-sm"
+                  >
+                    <option value="">Tümü</option>
+                    {businessMonthlyExpenseAggregates.sortedCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="max-h-[480px] overflow-y-auto pr-2">
+                <ExpensesList expenses={businessMonthlyFilteredExpenses} onUpdate={handleRefresh} />
               </div>
             </div>
           )}
